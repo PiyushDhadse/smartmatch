@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
   "dev": "next dev",
-  "build": "npm ci --legacy-peer-deps && next build",
+  "build": "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && next build",
   "start": "next start",
   "lint": "eslint"
 },
