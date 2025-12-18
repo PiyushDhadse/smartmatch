@@ -13,7 +13,7 @@ const ServiceCard = ({ service }) => {
           {service.title}
         </h2>
 
-        <p className="text-sm text-indigo-600 font-medium mt-1">
+        <p className="text-sm text-green-600 font-medium mt-1">
           {service.category}
         </p>
 
@@ -33,7 +33,7 @@ const ServiceCard = ({ service }) => {
       {/* Action */}
       <Link
         href={`/booking?serviceId=${service.id}`}
-        className="mt-5 text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl font-medium transition"
+        className="mt-5 text-center bg-emerald-700 hover:bg-emerald-900 text-white py-2 rounded-xl font-medium transition"
       >
         Book Service
       </Link>
