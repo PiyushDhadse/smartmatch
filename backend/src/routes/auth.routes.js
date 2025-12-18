@@ -1,100 +1,84 @@
-// backend/src/middlewares/auth.middleware.js
-const { supabase } = require("../config/supabase");
-const { sendError } = require("../utils/response");
-
-/**
- * Authenticate user via user ID in headers
- * Frontend should send: { "x-user-id": "user-uuid" }
- */
-const authenticate = async (req, res, next) => {
-  try {
-    const userId = req.headers["x-user-id"];
-
-    if (!userId) {
-      return sendError(res, "Authentication required. Missing user ID.", 401);
-    }
-
-    // Fetch user from database
-    const { data: user, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
-
-    if (error || !user) {
-      return sendError(res, "User not found", 401);
-    }
-
-    // Attach user to request object
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error("Auth middleware error:", error);
-    sendError(res, "Authentication failed", 500, error.message);
-  }
-};
-
-/**
- * Require user to be a provider
- */
-const requireProvider = async (req, res, next) => {
-  try {
-    if (!req.user) {
-      return sendError(res, "Authentication required", 401);
-    }
-
-    if (req.user.role !== "provider") {
-      return sendError(res, "Provider access required", 403);
-    }
-
-    // Fetch provider details
-    const { data: provider, error } = await supabase
-      .from("service_providers")
-      .select("*")
-      .eq("user_id", req.user.id)
-      .single();
-
-    if (error || !provider) {
-      return sendError(res, "Provider profile not found", 404);
-    }
-
-    // Attach provider to request object
-    req.provider = provider;
-    next();
-  } catch (error) {
-    console.error("Provider middleware error:", error);
-    sendError(res, "Authorization failed", 500, error.message);
-  }
-};
-
-/**
- * Optional authentication - doesn't fail if no user
- */
-const optionalAuth = async (req, res, next) => {
-  try {
-    const userId = req.headers["x-user-id"];
-
-    if (userId) {
-      const { data: user } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (user) {
-        req.user = user;
-      }
-    }
-
-    next();
-  } catch (error) {
-    // Continue without user
-    next();
-  }
-};
-
-module.exports = {
+const express = require("express");
+const router = express.Router();
+const {
+  syncUser,
+  getProfile,
+  updateProfile,
+  becomeProvider,
+  updateAvailability,
+  getProviderStats,
+} = require("../controllers/users.controller");
+const {
   authenticate,
   requireProvider,
-  optionalAuth,
-};
+} = require("../middlewares/auth.middleware");
+
+/**
+ * @route   GET /api/auth
+ * @desc    Show available auth endpoints
+ * @access  Public
+ */
+router.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Auth API endpoints",
+    endpoints: {
+      info: "GET /api/auth",
+      syncUser: "POST /api/auth/sync-user",
+      getProfile: "GET /api/auth/profile",
+      updateProfile: "PUT /api/auth/profile",
+      becomeProvider: "POST /api/auth/become-provider",
+      updateAvailability: "PATCH /api/auth/provider/availability",
+      getProviderStats: "GET /api/auth/provider/stats",
+    },
+  });
+});
+
+/**
+ * @route   POST /api/auth/sync-user
+ * @desc    Sync user from NextAuth to Supabase users table
+ * @access  Public (called from NextAuth callback)
+ */
+router.post("/sync-user", syncUser);
+
+/**
+ * @route   GET /api/auth/profile
+ * @desc    Get current user profile
+ * @access  Private
+ */
+router.get("/profile", authenticate, getProfile);
+
+/**
+ * @route   PUT /api/auth/profile
+ * @desc    Update current user profile
+ * @access  Private
+ */
+router.put("/profile", authenticate, updateProfile);
+
+/**
+ * @route   POST /api/auth/become-provider
+ * @desc    Register as a service provider
+ * @access  Private
+ */
+router.post("/become-provider", authenticate, becomeProvider);
+
+/**
+ * @route   PATCH /api/auth/provider/availability
+ * @desc    Update provider availability status
+ * @access  Private (Provider only)
+ */
+router.patch(
+  "/provider/availability",
+  authenticate,
+  requireProvider,
+  updateAvailability
+);
+
+/**
+ * @route   GET /api/auth/provider/stats
+ * @desc    Get provider dashboard stats
+ * @access  Private (Provider only)
+ */
+router.get("/provider/stats", authenticate, requireProvider, getProviderStats);
+
+module.exports = router;
