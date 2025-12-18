@@ -161,15 +161,9 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {!session ? (
             <>
-              <button
-                type="button"
-                onClick={() =>
-                  signIn("github", { callbackUrl: "/dashboard/user" })
-                }
-                className={`${btnSecondary} text-sm`}
-              >
+              <Link href="/login" className={`${btnSecondary} text-sm`}>
                 Login
-              </button>
+              </Link>
               <Link href="/register" className={`${btnPrimary} text-sm`}>
                 Get Started
               </Link>
@@ -283,16 +277,13 @@ export default function Navbar() {
           <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-emerald-50">
             {!session ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    signIn("github", { callbackUrl: "/dashboard/user" });
-                  }}
+                <Link
+                  href="/login"
                   className={`${btnSecondary} w-full text-center`}
+                  onClick={() => setIsMenuOpen(false)}
                 >
-                  Login with GitHub
-                </button>
+                  Login
+                </Link>
                 <Link
                   href="/register"
                   className={`${btnPrimary} w-full text-center`}
