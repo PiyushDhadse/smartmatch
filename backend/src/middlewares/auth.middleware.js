@@ -1,80 +1,41 @@
+// backend/src/middlewares/auth.middleware.js
 const { supabase } = require("../config/supabase");
 const { sendError } = require("../utils/response");
 
 /**
- * Verify JWT token from NextAuth session
- * Expects Authorization header: Bearer <token> or x-user-id header
+ * Authenticate user via user ID in headers
+ * Frontend should send: { "x-user-id": "user-uuid" }
  */
 const authenticate = async (req, res, next) => {
   try {
-    // Option 1: Get user ID from custom header (set by Next.js frontend)
     const userId = req.headers["x-user-id"];
 
-    // Option 2: Get from Authorization Bearer token
-    const authHeader = req.headers.authorization;
-
-    if (!userId && !authHeader) {
-      return sendError(res, "Authentication required", 401);
+    if (!userId) {
+      return sendError(res, "Authentication required. Missing user ID.", 401);
     }
 
-    let authenticatedUserId = userId;
-
-    // If using Bearer token, verify with Supabase
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
-
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser(token);
-
-      if (error || !user) {
-        return sendError(res, "Invalid or expired token", 401);
-      }
-
-      authenticatedUserId = user.id;
-    }
-
-    // Fetch user profile from our users table
-    const { data: userProfile, error: profileError } = await supabase
+    // Fetch user from database
+    const { data: user, error } = await supabase
       .from("users")
       .select("*")
-      .eq("id", authenticatedUserId)
+      .eq("id", userId)
       .single();
 
-    if (profileError || !userProfile) {
-      // User exists in auth but not in users table - could auto-create
-      req.user = { id: authenticatedUserId, role: "user" };
-    } else {
-      req.user = userProfile;
+    if (error || !user) {
+      return sendError(res, "User not found", 401);
     }
 
+    // Attach user to request object
+    req.user = user;
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
-    return sendError(res, "Authentication failed", 401);
+    sendError(res, "Authentication failed", 500, error.message);
   }
 };
 
 /**
- * Check if user has required role
- */
-const requireRole = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return sendError(res, "Authentication required", 401);
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return sendError(res, "Insufficient permissions", 403);
-    }
-
-    next();
-  };
-};
-
-/**
- * Check if user is a verified service provider
+ * Require user to be a provider
  */
 const requireProvider = async (req, res, next) => {
   try {
@@ -82,6 +43,11 @@ const requireProvider = async (req, res, next) => {
       return sendError(res, "Authentication required", 401);
     }
 
+    if (req.user.role !== "provider") {
+      return sendError(res, "Provider access required", 403);
+    }
+
+    // Fetch provider details
     const { data: provider, error } = await supabase
       .from("service_providers")
       .select("*")
@@ -89,41 +55,46 @@ const requireProvider = async (req, res, next) => {
       .single();
 
     if (error || !provider) {
-      return sendError(res, "Service provider profile required", 403);
+      return sendError(res, "Provider profile not found", 404);
     }
 
+    // Attach provider to request object
     req.provider = provider;
     next();
   } catch (error) {
-    console.error("Provider check error:", error);
-    return sendError(res, "Authorization failed", 500);
+    console.error("Provider middleware error:", error);
+    sendError(res, "Authorization failed", 500, error.message);
   }
 };
 
 /**
- * Optional authentication - doesn't fail if no auth provided
+ * Optional authentication - doesn't fail if no user
  */
 const optionalAuth = async (req, res, next) => {
   try {
     const userId = req.headers["x-user-id"];
-    const authHeader = req.headers.authorization;
 
-    if (!userId && !authHeader) {
-      req.user = null;
-      return next();
+    if (userId) {
+      const { data: user } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (user) {
+        req.user = user;
+      }
     }
 
-    // Reuse authenticate logic
-    return authenticate(req, res, next);
+    next();
   } catch (error) {
-    req.user = null;
+    // Continue without user
     next();
   }
 };
 
 module.exports = {
   authenticate,
-  requireRole,
   requireProvider,
   optionalAuth,
 };
