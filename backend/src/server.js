@@ -3,6 +3,16 @@ require("dotenv").config();
 
 const app = require("./app");
 
+// 🔹 Health check route (safe, non-intrusive)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Backend is healthy",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 
 // Start server
@@ -10,7 +20,7 @@ const server = app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║   🚀 SmartMatch API Server                                ║
+║   SmartMatch API Server                                   ║
 ║                                                           ║
 ║   Status:  Running                                        ║
 ║   Port:    ${PORT}                                           ║
@@ -18,8 +28,8 @@ const server = app.listen(PORT, () => {
     process.env.NODE_ENV || "development"
   }                                ║
 ║                                                           ║
-║   Health:  http://localhost:${PORT}/health                   ║
-║   API:     http://localhost:${PORT}/api                      ║
+║   Health:  /health                                        ║
+║   API:     /api                                           ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
