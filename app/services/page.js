@@ -1,74 +1,41 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ServiceCard from '../components/ServiceCard';
+import { getServices } from '../lib/api';
 
-const ServicesPage = () => {
+const ServicesContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') ?? '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') ?? 'all');
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data for services
-  const services = [
-    {
-      id: 1,
-      title: 'Plumbing Services',
-      description: 'Expert plumbers for repairs, installations, leaks, clogs, and maintenance.',
-      price: 45,
-      rating: 4.8,
-      category: 'home',
-      image: '/images/plumbing.jpg'
-    },
-    {
-      id: 2,
-      title: 'Electrical Work',
-      description: 'Licensed electricians for wiring, repairs, installations, and safety checks.',
-      price: 55,
-      rating: 4.9,
-      category: 'home',
-      image: '/images/electrical.jpg'
-    },
-    {
-      id: 3,
-      title: 'Home Cleaning',
-      description: 'Professional cleaning for homes and offices — deep clean or recurring plans.',
-      price: 35,
-      rating: 4.7,
-      category: 'cleaning',
-      image: '/images/cleaning.jpg'
-    },
-    {
-      id: 4,
-      title: 'Tutoring',
-      description: 'Expert tutors for all subjects and levels — school to university.',
-      price: 40,
-      rating: 4.9,
-      category: 'education',
-      image: '/images/tutoring.jpg'
-    },
-    {
-      id: 5,
-      title: 'Gardening Services',
-      description: 'Landscaping, lawn care, pruning, and seasonal garden maintenance.',
-      price: 30,
-      rating: 4.6,
-      category: 'outdoor',
-      image: '/images/gardening.jpg'
-    },
-    {
-      id: 6,
-      title: 'Appliance Repair',
-      description: 'Fast repair for common appliances: washing machine, fridge, microwave, and more.',
-      price: 50,
-      rating: 4.5,
-      category: 'home',
-      image: '/images/appliance.jpg'
-    }
-  ];
+  // Fetch services from API
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await getServices({
+          limit: 100, // Get more services for client-side filtering
+        });
+        setServices(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch services:', err);
+        setError('Failed to load services. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
 
   const categories = [
     { id: 'all', name: 'All', icon: '✨' },
@@ -286,7 +253,24 @@ const ServicesPage = () => {
         </div>
 
         {/* Services Grid */}
-        {filteredServices.length > 0 ? (
+        {loading ? (
+          <div className="mt-6 text-center py-14 bg-white border border-emerald-100 rounded-2xl">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-700 border-r-transparent"></div>
+            <p className="text-slate-600 mt-4">Loading services...</p>
+          </div>
+        ) : error ? (
+          <div className="mt-6 text-center py-14 bg-white border border-red-100 rounded-2xl">
+            <h3 className="text-xl font-semibold text-red-900">Error Loading Services</h3>
+            <p className="text-slate-600 mt-2">{error}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="btn-primary mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition px-5 py-2.5"
+            >
+              Retry
+            </button>
+          </div>
+        ) : filteredServices.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredServices.map((service) => (
               <ServiceCard key={service.id} service={service} />
@@ -336,6 +320,21 @@ const ServicesPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const ServicesPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-700 border-r-transparent"></div>
+          <p className="text-slate-600 mt-4">Loading...</p>
+        </div>
+      </div>
+    }>
+      <ServicesContent />
+    </Suspense>
   );
 };
 

@@ -28,9 +28,19 @@ const ServiceCard = ({ service }) => {
             {service.location}
           </span>
           <span className="font-semibold text-green-600">
-            ₹{service.price}
+            ${service.price}/hr
           </span>
         </div>
+
+        {/* Provider Info */}
+        {service.service_providers?.users?.name && (
+          <div className="mt-3 text-xs text-gray-500">
+            Provider: <span className="font-medium text-gray-700">{service.service_providers.users.name}</span>
+            {service.service_providers.is_verified && (
+              <span className="ml-2 text-green-600">✓ Verified</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Action */}
