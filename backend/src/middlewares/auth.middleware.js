@@ -8,7 +8,15 @@ const { sendError } = require("../utils/response");
  */
 const authenticate = async (req, res, next) => {
   try {
-    const userId = req.headers["x-user-id"];
+    let userId = req.headers["x-user-id"];
+
+    // Also check Authorization header
+    if (!userId && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith("Bearer ")) {
+        userId = authHeader.substring(7);
+      }
+    }
 
     if (!userId) {
       return sendError(res, "Authentication required. Missing user ID.", 401);

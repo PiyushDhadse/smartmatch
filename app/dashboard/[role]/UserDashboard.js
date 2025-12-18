@@ -2,73 +2,82 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { getMyBookings } from "../../lib/api";
 
 export default function UserDashboard() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("bookings");
+  const [bookings, setBookings] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock user data - will come from NextAuth session
+  // Mock user data - fallback if session not ready
   const user = {
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    avatar: null,
+    name: session?.user?.name || "User",
+    email: session?.user?.email || "user@example.com",
+    avatar: session?.user?.image || null,
     joinedDate: "January 2025",
   };
 
-  // Mock bookings data - will come from API
-  const bookings = [
-    {
-      id: "SM-284731",
-      service: "Plumbing",
-      icon: "🔧",
-      provider: "John's Plumbing",
-      date: "2025-01-20",
-      time: "10:00 AM",
-      status: "confirmed",
-      address: "123 Main St, New York",
-    },
-    {
-      id: "SM-284652",
-      service: "Electrical",
-      icon: "⚡",
-      provider: "Quick Fix Services",
-      date: "2025-01-18",
-      time: "02:00 PM",
-      status: "completed",
-      address: "456 Oak Ave, New York",
-    },
-    {
-      id: "SM-284589",
-      service: "Cleaning",
-      icon: "🧹",
-      provider: "Sparkle Clean Co.",
-      date: "2025-01-15",
-      time: "09:00 AM",
-      status: "completed",
-      address: "123 Main St, New York",
-    },
-    {
-      id: "SM-284401",
-      service: "Tutoring",
-      icon: "📚",
-      provider: "Math Masters",
-      date: "2025-01-22",
-      time: "04:00 PM",
-      status: "pending",
-      address: "Online Session",
-    },
-  ];
+  useEffect(() => {
+    if (session?.user?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsLoading(true);
+      getMyBookings(session.user.id)
+        .then((res) => {
+          setBookings(res.data || []);
+        })
+        .catch((err) => console.error(err))
+        .finally(() => setIsLoading(false));
+    } else if (session === null) {
+      setIsLoading(false);
+    }
+  }, [session]);
+
+  const getCategoryIcon = (category) => {
+    const icons = {
+      Plumbing: "🔧",
+      Electrical: "⚡",
+      Cleaning: "🧹",
+      Tutoring: "📚",
+      Carpentry: "🔨",
+      Painting: "🎨",
+    };
+    return icons[category] || "🛠️";
+  };
 
   const stats = [
-    { label: "Total Bookings", value: "12", icon: "📅" },
-    { label: "Completed", value: "8", icon: "✅" },
-    { label: "Upcoming", value: "3", icon: "⏳" },
-    { label: "Cancelled", value: "1", icon: "❌" },
+    {
+      label: "Total Bookings",
+      value: bookings.length.toString(),
+      icon: "📅",
+    },
+    {
+      label: "Completed",
+      value: bookings.filter((b) => b.status === "completed").length.toString(),
+      icon: "✅",
+    },
+    {
+      label: "Upcoming",
+      value: bookings
+        .filter((b) =>
+          ["accepted", "pending", "in_progress"].includes(b.status)
+        )
+        .length.toString(),
+      icon: "⏳",
+    },
+    {
+      label: "Cancelled",
+      value: bookings.filter((b) => b.status === "cancelled").length.toString(),
+      icon: "❌",
+    },
   ];
 
   const getStatusBadge = (status) => {
     const styles = {
-      confirmed: "bg-blue-100 text-blue-600",
+      accepted: "bg-blue-100 text-blue-600",
+      in_progress: "bg-purple-100 text-purple-600",
       pending: "bg-yellow-100 text-yellow-600",
       completed: "bg-green-100 text-green-600",
       cancelled: "bg-red-100 text-red-600",
@@ -138,61 +147,67 @@ export default function UserDashboard() {
 
               {/* Bookings List */}
               <div className="p-4">
-                {bookings
-                  .filter((booking) =>
-                    activeTab === "bookings"
-                      ? ["confirmed", "pending"].includes(booking.status)
-                      : ["completed", "cancelled"].includes(booking.status)
-                  )
-                  .map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl hover:bg-cream transition-all mb-3 border border-cream"
-                    >
-                      <div className="flex items-start gap-4 mb-3 md:mb-0">
-                        <div className="w-12 h-12 bg-cream rounded-xl flex items-center justify-center text-2xl">
-                          {booking.icon}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-slate">
-                            {booking.service}
-                          </h4>
-                          <p className="text-sm text-sage">
-                            {booking.provider}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-sage">
-                            <span>📅 {booking.date}</span>
-                            <span>🕐 {booking.time}</span>
+                {isLoading ? (
+                  <div className="text-center py-12 text-sage">
+                    Loading bookings...
+                  </div>
+                ) : (
+                  bookings
+                    .filter((booking) =>
+                      activeTab === "bookings"
+                        ? ["confirmed", "pending"].includes(booking.status)
+                        : ["completed", "cancelled"].includes(booking.status)
+                    )
+                    .map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl hover:bg-cream transition-all mb-3 border border-cream"
+                      >
+                        <div className="flex items-start gap-4 mb-3 md:mb-0">
+                          <div className="w-12 h-12 bg-cream rounded-xl flex items-center justify-center text-2xl">
+                            {getCategoryIcon(booking.services?.category)}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-slate">
+                              {booking.services?.title}
+                            </h4>
+                            <p className="text-sm text-sage">
+                              {booking.service_providers?.users?.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-sage">
+                              <span>📅 {booking.booking_date}</span>
+                              <span>🕐 {booking.time_slot}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-3 ml-16 md:ml-0">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                            booking.status
-                          )}`}
-                        >
-                          {getStatusText(booking.status)}
-                        </span>
-                        <button className="p-2 hover:bg-white rounded-lg transition-all text-sage hover:text-slate">
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                        <div className="flex items-center gap-3 ml-16 md:ml-0">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                              booking.status
+                            )}`}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5l7 7-7 7"
-                            />
-                          </svg>
-                        </button>
+                            {getStatusText(booking.status)}
+                          </span>
+                          <button className="p-2 hover:bg-white rounded-lg transition-all text-sage hover:text-slate">
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                )}
 
                 {bookings.filter((booking) =>
                   activeTab === "bookings"

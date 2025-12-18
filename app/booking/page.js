@@ -2,11 +2,32 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { createBooking, getServices } from "../lib/api";
 
 export default function BookingPage() {
+  const { data: session } = useSession();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState(null);
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [availableServices, setAvailableServices] = useState([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      setIsLoadingServices(true);
+      getServices({ category: selectedCategory })
+        .then((res) => {
+          setAvailableServices(res.data);
+        })
+        .catch((err) => console.error(err))
+        .finally(() => setIsLoadingServices(false));
+    } else {
+      setAvailableServices([]);
+    }
+  }, [selectedCategory]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -14,8 +35,8 @@ export default function BookingPage() {
   }, []);
 
   const [bookingData, setBookingData] = useState({
-    service: "",
-    provider: "",
+    service: "", // This will store the service UUID
+    provider: "", // This is now redundant but kept for compatibility if needed
     date: "",
     time: "",
     address: "",
@@ -24,72 +45,73 @@ export default function BookingPage() {
     notes: "",
   });
 
-  // Mock data - will come from API later
-  const services = [
-    { id: "plumbing", name: "Plumbing", icon: "🔧" },
-    { id: "electrical", name: "Electrical", icon: "⚡" },
-    { id: "cleaning", name: "Cleaning", icon: "🧹" },
-    { id: "tutoring", name: "Tutoring", icon: "📚" },
-    { id: "carpentry", name: "Carpentry", icon: "🔨" },
-    { id: "painting", name: "Painting", icon: "🎨" },
-  ];
-
-  const providers = [
-    {
-      id: "p1",
-      name: "John's Plumbing",
-      rating: 4.9,
-      score: 92,
-      available: true,
-    },
-    {
-      id: "p2",
-      name: "Quick Fix Services",
-      rating: 4.7,
-      score: 88,
-      available: true,
-    },
-    {
-      id: "p3",
-      name: "Pro Handyman",
-      rating: 4.8,
-      score: 85,
-      available: false,
-    },
-  ];
-
-  const timeSlots = [
-    "09:00 AM",
-    "10:00 AM",
-    "11:00 AM",
-    "12:00 PM",
-    "01:00 PM",
-    "02:00 PM",
-    "03:00 PM",
-    "04:00 PM",
-    "05:00 PM",
+  // Categories
+  const categories = [
+    { id: "Plumbing", name: "Plumbing", icon: "🔧" },
+    { id: "Electrical", name: "Electrical", icon: "⚡" },
+    { id: "Cleaning", name: "Cleaning", icon: "🧹" },
+    { id: "Tutoring", name: "Tutoring", icon: "📚" },
+    { id: "Carpentry", name: "Carpentry", icon: "🔨" },
+    { id: "Painting", name: "Painting", icon: "🎨" },
   ];
 
   const handleInputChange = (field, value) => {
     setBookingData((prev) => ({ ...prev, [field]: value }));
   };
 
+  useEffect(() => {
+    if (bookingData.service && bookingData.date) {
+      setIsLoadingSlots(true);
+      getAvailableSlots(bookingData.service, bookingData.date)
+        .then((res) => {
+          setAvailableTimeSlots(res.data || []);
+        })
+        .catch((err) => console.error(err))
+        .finally(() => setIsLoadingSlots(false));
+    } else {
+      setAvailableTimeSlots([]);
+    }
+  }, [bookingData.service, bookingData.date]);
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    // API call will be implemented here
-    console.log("Booking submitted:", bookingData);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      if (!session) {
+        alert("Please sign in to book a service");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Prepare booking data
+      // Note: In a real app, service and provider should be valid UUIDs from the database
+      const payload = {
+        service_id: bookingData.service, // This needs to be a valid UUID
+        booking_date: bookingData.date,
+        time_slot: bookingData.time,
+        address: bookingData.address,
+        city: bookingData.city,
+        urgency: bookingData.urgency,
+        notes: bookingData.notes,
+      };
+
+      await createBooking(session.user.id, payload);
+
       setCurrentStep(4); // Success step
-    }, 1500);
+    } catch (error) {
+      console.error("Booking failed:", error);
+      alert(
+        "Failed to create booking. Make sure you selected a valid service (UUID) and are logged in."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return bookingData.service && bookingData.provider;
+        return bookingData.service; // Only service UUID is needed
       case 2:
         return bookingData.date && bookingData.time;
       case 3:
@@ -167,21 +189,24 @@ export default function BookingPage() {
                   What service do you need?
                 </label>
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                  {services.map((service) => (
+                  {categories.map((category) => (
                     <button
-                      key={service.id}
-                      onClick={() => handleInputChange("service", service.id)}
+                      key={category.id}
+                      onClick={() => {
+                        setSelectedCategory(category.id);
+                        setBookingData((prev) => ({ ...prev, service: "" }));
+                      }}
                       className={`p-4 rounded-xl text-center transition-all border-2 ${
-                        bookingData.service === service.id
+                        selectedCategory === category.id
                           ? "border-forest bg-cream"
                           : "border-cream hover:border-sage"
                       }`}
                     >
                       <span className="text-2xl block mb-1">
-                        {service.icon}
+                        {category.icon}
                       </span>
                       <span className="text-xs font-medium text-slate">
-                        {service.name}
+                        {category.name}
                       </span>
                     </button>
                   ))}
@@ -193,59 +218,97 @@ export default function BookingPage() {
                 <label className="block text-sm font-medium text-slate mb-3">
                   Choose a provider
                 </label>
-                <div className="space-y-3">
-                  {providers.map((provider) => (
-                    <button
-                      key={provider.id}
-                      onClick={() =>
-                        provider.available &&
-                        handleInputChange("provider", provider.id)
-                      }
-                      disabled={!provider.available}
-                      className={`w-full p-4 rounded-xl text-left transition-all border-2 flex items-center justify-between ${
-                        !provider.available
-                          ? "border-cream bg-gray-50 opacity-60 cursor-not-allowed"
-                          : bookingData.provider === provider.id
-                          ? "border-forest bg-cream"
-                          : "border-cream hover:border-sage"
-                      }`}
+
+                {isLoadingServices ? (
+                  <div className="text-center py-10 text-sage flex flex-col items-center">
+                    <svg
+                      className="animate-spin h-8 w-8 mb-2 text-forest"
+                      viewBox="0 0 24 24"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-cream rounded-full flex items-center justify-center text-xl">
-                          🧑‍🔧
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-slate">
-                            {provider.name}
-                          </h4>
-                          <div className="flex items-center gap-3 text-sm">
-                            <span className="text-sage">
-                              ⭐ {provider.rating}
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Loading available providers...
+                  </div>
+                ) : availableServices.length > 0 ? (
+                  <div className="space-y-3">
+                    {availableServices.map((service) => {
+                      // Extract provider info safely
+                      const providerName =
+                        service.service_providers?.users?.name ||
+                        "Unknown Provider";
+                      const rating = service.service_providers?.rating || "New";
+                      const isAvailable =
+                        service.service_providers?.availability_status ===
+                        "available";
+
+                      return (
+                        <button
+                          key={service.id}
+                          onClick={() =>
+                            handleInputChange("service", service.id)
+                          }
+                          className={`w-full p-4 rounded-xl text-left transition-all border-2 flex items-center justify-between ${
+                            bookingData.service === service.id
+                              ? "border-forest bg-cream"
+                              : "border-cream hover:border-sage"
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-cream rounded-full flex items-center justify-center text-xl">
+                              🧑‍🔧
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-slate">
+                                {providerName}
+                              </h4>
+                              <p className="text-xs text-slate-500">
+                                {service.title}
+                              </p>
+                              <div className="flex items-center gap-3 text-sm mt-1">
+                                <span className="text-sage">⭐ {rating}</span>
+                                <span className="text-green-500">
+                                  ● Available
+                                </span>
+                                <span className="font-bold text-forest ml-2">
+                                  ${service.price}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right hidden sm:block">
+                            <span className="text-xs text-sage block">
+                              Service Price
                             </span>
-                            <span
-                              className={
-                                provider.available
-                                  ? "text-green-500"
-                                  : "text-red-500"
-                              }
-                            >
-                              ●{" "}
-                              {provider.available ? "Available" : "Unavailable"}
+                            <span className="text-lg font-bold text-forest">
+                              ${service.price}
                             </span>
                           </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-sage block">
-                          SmartMatch Score
-                        </span>
-                        <span className="text-lg font-bold text-forest">
-                          {provider.score}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                    <p className="text-sage">
+                      {selectedCategory
+                        ? "No providers available for this category yet."
+                        : "Select a service category above to see providers."}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
