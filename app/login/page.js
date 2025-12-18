@@ -20,7 +20,9 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <span className="text-4xl">🔗</span>
+            <span className="text-4xl">
+              <img className="h-10" src="./favicon.ico" alt="" />
+            </span>
             <span className="text-2xl font-bold text-slate">SmartMatch</span>
           </Link>
           <h1 className="text-3xl font-bold text-slate mb-2">Welcome Back</h1>

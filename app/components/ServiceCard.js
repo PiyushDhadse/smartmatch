@@ -23,7 +23,10 @@ const ServiceCard = ({ service }) => {
 
         {/* Location & Price */}
         <div className="flex justify-between items-center mt-4 text-sm text-gray-700">
-          <span>📍 {service.location}</span>
+          <span className="flex items-center gap-1">
+            <img src="/favicon.ico" alt="Location" className="h-4 w-4" />
+            {service.location}
+          </span>
           <span className="font-semibold text-green-600">
             ₹{service.price}
           </span>
