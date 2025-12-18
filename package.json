@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
   "dev": "next dev",
-  "build": "next build",
+  "build": "npm ci --legacy-peer-deps && next build",
   "start": "next start",
   "lint": "eslint"
 },
@@ -20,11 +20,11 @@
   "devDependencies": {
     "@types/node": "25.0.3",
     "@types/react": "19.2.7",
-    "autoprefixer": "^10",
+    "autoprefixer": "^10.4.20",
     "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^9",
+    "eslint": "^9.0.0",
     "eslint-config-next": "16.0.10",
-    "postcss": "^8",
-    "tailwindcss": "^3"
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.17"
   }
 }

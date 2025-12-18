@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  reactCompiler: true,
+  // Disable Turbopack for stable build
+  experimental: {
+    turbo: false,
+  },
+  // Keep reactCompiler if you need it, but it might cause issues
+  reactCompiler: false,
 };
 
-export default nextConfig;
+module.exports = nextConfig;
