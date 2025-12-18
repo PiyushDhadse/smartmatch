@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
   const [selectedRole, setSelectedRole] = useState(null);
@@ -14,11 +15,17 @@ export default function RegisterPage() {
       return;
     }
 
-    setIsLoading(true);
-    // NextAuth GitHub login will be implemented here
-    // Store role in session/database after auth
-    // signIn('github', { callbackUrl: selectedRole === 'provider' ? '/dashboard/provider' : '/dashboard/user' });
-    console.log("GitHub register clicked with role:", selectedRole);
+    try {
+      setIsLoading(true);
+      await signIn("github", {
+        callbackUrl:
+          selectedRole === "provider"
+            ? "/dashboard/provider"
+            : "/dashboard/user",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const roles = [

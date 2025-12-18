@@ -3,15 +3,18 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGitHubLogin = async () => {
-    setIsLoading(true);
-    // NextAuth GitHub login will be implemented here
-    // signIn('github', { callbackUrl: '/dashboard/user' });
-    console.log("GitHub login clicked");
+    try {
+      setIsLoading(true);
+      await signIn("github", { callbackUrl: "/dashboard/user" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
