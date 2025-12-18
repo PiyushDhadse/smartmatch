@@ -42,10 +42,10 @@ export default function HomePage() {
               </p>
               
               <div className="flex flex-wrap gap-4 mt-2">
-                <Link href="/services" className="btn-primary px-7 py-3.5 text-base">
+                <Link href="/services" className=" bg-emerald-700 btn-primary px-7 py-3.5 text-base">
                   Find Services
                 </Link>
-                <Link href="/register" className="btn-secondary px-7 py-3.5 text-base">
+                <Link href="/register" className="hover:bg-emerald-800 btn-secondary px-7 py-3.5 text-base">
                   Become a Provider
                 </Link>
               </div>

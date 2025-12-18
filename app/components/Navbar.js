@@ -58,7 +58,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-3xl">🔗</span>
+          <span className="text-3xl"><img className='h-20' src="./favicon.ico" alt="" /></span>
           <span className="text-xl font-bold text-slate-900">SmartMatch</span>
         </Link>
 

@@ -88,7 +88,7 @@ const ServicesPage = () => {
       const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchTerm, selectedCategory,services]);
+  }, [searchTerm, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-slate-50">
