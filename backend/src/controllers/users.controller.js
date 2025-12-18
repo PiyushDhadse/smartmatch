@@ -1,103 +1,85 @@
+// backend/src/controllers/users.controller.js
 const { supabase } = require("../config/supabase");
 const { sendSuccess, sendError } = require("../utils/response");
 
 /**
- * Get or create user profile
+ * Sync user from NextAuth to Supabase
  * POST /api/auth/sync-user
  */
 const syncUser = async (req, res) => {
   try {
     const { id, name, email, image } = req.body;
 
-    if (!id || !email) {
-      return sendError(res, "User ID and email are required", 400);
+    if (!id) {
+      return sendError(res, "User ID is required", 400);
     }
 
-    // Check if user exists
-    const { data: existingUser, error: fetchError } = await supabase
+    // Upsert user into database
+    const { data, error } = await supabase
       .from("users")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (existingUser) {
-      // Update user if needed
-      const { data, error } = await supabase
-        .from("users")
-        .update({ name: name || existingUser.name })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Update user error:", error);
-        return sendError(res, "Failed to update user", 500);
-      }
-
-      return sendSuccess(res, data, "User synced successfully");
-    }
-
-    // Create new user
-    const { data: newUser, error: createError } = await supabase
-      .from("users")
-      .insert({
-        id,
-        name: name || email.split("@")[0],
-        role: "user",
-      })
+      .upsert(
+        {
+          id,
+          name: name || null,
+          email: email || null,
+          avatar_url: image || null,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "id",
+        }
+      )
       .select()
       .single();
 
-    if (createError) {
-      console.error("Create user error:", createError);
-      return sendError(res, "Failed to create user", 500);
+    if (error) {
+      console.error("Sync user error:", error);
+      return sendError(res, "Failed to sync user", 500, error.message);
     }
 
-    return sendSuccess(res, newUser, "User created successfully", 201);
+    sendSuccess(res, data, "User synced successfully!");
   } catch (error) {
     console.error("Sync user error:", error);
-    return sendError(res, "Internal server error", 500);
+    sendError(res, "Failed to sync user", 500, error.message);
   }
 };
 
 /**
- * Get user profile
- * GET /api/users/profile
+ * Get current user profile
+ * GET /api/auth/profile
  */
 const getProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const user = req.user;
 
-    const { data, error } = await supabase
-      .from("users")
-      .select(
-        `
-        *,
-        service_providers (
-          id,
-          is_verified,
-          availability_status
-        )
-      `
-      )
-      .eq("id", userId)
-      .single();
-
-    if (error) {
-      console.error("Get profile error:", error);
-      return sendError(res, "Failed to fetch profile", 500);
+    // If user is a provider, fetch provider details too
+    let providerDetails = null;
+    if (user.role === "provider") {
+      const { data } = await supabase
+        .from("service_providers")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      providerDetails = data;
     }
 
-    return sendSuccess(res, data, "Profile fetched successfully");
+    sendSuccess(
+      res,
+      {
+        ...user,
+        provider: providerDetails,
+      },
+      "Profile fetched successfully!"
+    );
   } catch (error) {
     console.error("Get profile error:", error);
-    return sendError(res, "Internal server error", 500);
+    sendError(res, "Failed to fetch profile", 500, error.message);
   }
 };
 
 /**
- * Update user profile
- * PUT /api/users/profile
+ * Update current user profile
+ * PUT /api/auth/profile
  */
 const updateProfile = async (req, res) => {
   try {
@@ -107,6 +89,7 @@ const updateProfile = async (req, res) => {
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (phone !== undefined) updates.phone = phone;
+    updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
       .from("users")
@@ -116,34 +99,33 @@ const updateProfile = async (req, res) => {
       .single();
 
     if (error) {
-      console.error("Update profile error:", error);
-      return sendError(res, "Failed to update profile", 500);
+      return sendError(res, "Failed to update profile", 500, error.message);
     }
 
-    return sendSuccess(res, data, "Profile updated successfully");
+    sendSuccess(res, data, "Profile updated successfully!");
   } catch (error) {
     console.error("Update profile error:", error);
-    return sendError(res, "Internal server error", 500);
+    sendError(res, "Failed to update profile", 500, error.message);
   }
 };
 
 /**
- * Become a service provider
- * POST /api/users/become-provider
+ * Register as a service provider
+ * POST /api/auth/become-provider
  */
 const becomeProvider = async (req, res) => {
   try {
     const userId = req.user.id;
 
     // Check if already a provider
-    const { data: existing } = await supabase
+    const { data: existingProvider } = await supabase
       .from("service_providers")
       .select("id")
       .eq("user_id", userId)
       .single();
 
-    if (existing) {
-      return sendError(res, "You are already registered as a provider", 400);
+    if (existingProvider) {
+      return sendError(res, "Already registered as a provider", 400);
     }
 
     // Create provider profile
@@ -152,29 +134,49 @@ const becomeProvider = async (req, res) => {
       .insert({
         user_id: userId,
         is_verified: false,
-        availability_status: "available",
+        rating: 0,
+        total_jobs: 0,
+        availability_status: "offline",
       })
       .select()
       .single();
 
     if (providerError) {
-      console.error("Create provider error:", providerError);
-      return sendError(res, "Failed to create provider profile", 500);
+      return sendError(
+        res,
+        "Failed to create provider profile",
+        500,
+        providerError.message
+      );
     }
 
     // Update user role
-    await supabase.from("users").update({ role: "provider" }).eq("id", userId);
+    const { error: userError } = await supabase
+      .from("users")
+      .update({ role: "provider" })
+      .eq("id", userId);
 
-    return sendSuccess(res, provider, "You are now a service provider!", 201);
+    if (userError) {
+      // Rollback provider creation
+      await supabase.from("service_providers").delete().eq("id", provider.id);
+      return sendError(
+        res,
+        "Failed to update user role",
+        500,
+        userError.message
+      );
+    }
+
+    sendSuccess(res, provider, "Successfully registered as a provider!", 201);
   } catch (error) {
     console.error("Become provider error:", error);
-    return sendError(res, "Internal server error", 500);
+    sendError(res, "Failed to register as provider", 500, error.message);
   }
 };
 
 /**
- * Update provider availability
- * PATCH /api/users/provider/availability
+ * Update provider availability status
+ * PATCH /api/auth/provider/availability
  */
 const updateAvailability = async (req, res) => {
   try {
@@ -183,7 +185,11 @@ const updateAvailability = async (req, res) => {
 
     const validStatuses = ["available", "busy", "offline"];
     if (!validStatuses.includes(availability_status)) {
-      return sendError(res, "Invalid availability status", 400);
+      return sendError(
+        res,
+        "Invalid availability status. Use: available, busy, or offline",
+        400
+      );
     }
 
     const { data, error } = await supabase
@@ -194,69 +200,62 @@ const updateAvailability = async (req, res) => {
       .single();
 
     if (error) {
-      console.error("Update availability error:", error);
-      return sendError(res, "Failed to update availability", 500);
+      return sendError(
+        res,
+        "Failed to update availability",
+        500,
+        error.message
+      );
     }
 
-    return sendSuccess(res, data, "Availability updated successfully");
+    sendSuccess(res, data, "Availability updated successfully!");
   } catch (error) {
     console.error("Update availability error:", error);
-    return sendError(res, "Internal server error", 500);
+    sendError(res, "Failed to update availability", 500, error.message);
   }
 };
 
 /**
- * Get provider stats
- * GET /api/users/provider/stats
+ * Get provider dashboard stats
+ * GET /api/auth/provider/stats
  */
 const getProviderStats = async (req, res) => {
   try {
     const providerId = req.provider.id;
 
-    // Get provider info
-    const { data: provider } = await supabase
-      .from("service_providers")
-      .select("*")
-      .eq("id", providerId)
-      .single();
-
-    // Get booking stats
-    const { data: bookings } = await supabase
+    // Get booking counts by status
+    const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
       .select("status")
       .eq("provider_id", providerId);
 
+    if (bookingsError) {
+      return sendError(
+        res,
+        "Failed to fetch stats",
+        500,
+        bookingsError.message
+      );
+    }
+
+    // Calculate stats
     const stats = {
-      // Approximate total jobs as completed bookings count
-      total_jobs: bookings?.filter((b) => b.status === "completed").length || 0,
-      is_verified: provider.is_verified,
-      availability_status: provider.availability_status,
-      bookings: {
-        total: bookings?.length || 0,
-        pending: bookings?.filter((b) => b.status === "pending").length || 0,
-        accepted: bookings?.filter((b) => b.status === "accepted").length || 0,
-        in_progress:
-          bookings?.filter((b) => b.status === "in_progress").length || 0,
-        completed:
-          bookings?.filter((b) => b.status === "completed").length || 0,
-        cancelled:
-          bookings?.filter((b) => b.status === "cancelled").length || 0,
-      },
+      total_bookings: bookings.length,
+      pending: bookings.filter((b) => b.status === "pending").length,
+      accepted: bookings.filter((b) => b.status === "accepted").length,
+      in_progress: bookings.filter((b) => b.status === "in_progress").length,
+      completed: bookings.filter((b) => b.status === "completed").length,
+      cancelled: bookings.filter((b) => b.status === "cancelled").length,
+      rating: req.provider.rating,
+      total_jobs: req.provider.total_jobs,
+      is_verified: req.provider.is_verified,
+      availability_status: req.provider.availability_status,
     };
 
-    // Get active services count
-    const { count: servicesCount } = await supabase
-      .from("services")
-      .select("*", { count: "exact", head: true })
-      .eq("provider_id", providerId)
-      .eq("is_active", true);
-
-    stats.active_services = servicesCount || 0;
-
-    return sendSuccess(res, stats, "Provider stats fetched successfully");
+    sendSuccess(res, stats, "Provider stats fetched successfully!");
   } catch (error) {
     console.error("Get provider stats error:", error);
-    return sendError(res, "Internal server error", 500);
+    sendError(res, "Failed to fetch stats", 500, error.message);
   }
 };
 
