@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react';
-import ServiceCard from '../../components/ServiceCard';
+import ServiceCard from '../components/ServiceCard';
 
 const ServicesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
