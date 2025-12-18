@@ -84,7 +84,9 @@ export default function LoginPage() {
           {/* Role Selection Info */}
           <div className="bg-cream rounded-xl p-4 mb-6">
             <p className="text-sm text-slate text-center">
-              <span className="font-medium">New to SmartMatch?</span>
+              <Link href="/register" className="hover:text-forest transition-colors">
+                <span className="font-medium">New to SmartMatch?</span>
+              </Link>
               <br />
               <span className="text-sage">
                 Sign up to book services or become a provider
