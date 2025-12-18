@@ -9,6 +9,7 @@ export default function BookingPage() {
   const [bookingId, setBookingId] = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBookingId(Date.now().toString().slice(-6));
   }, []);
 

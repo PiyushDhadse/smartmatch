@@ -31,6 +31,7 @@ export default function Navbar() {
 
   // Close menus on route change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMenuOpen(false);
     setIsServicesOpen(false);
     setIsMobileServicesOpen(false);

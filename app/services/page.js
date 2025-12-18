@@ -88,12 +88,12 @@ const ServicesPage = () => {
       const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory,services]);
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <section className="border-b border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+      <section className="border-b border-emerald-100 bg-linear-to-br from-emerald-50 via-white to-amber-50">
         <div className="max-w-7xl mx-auto px-5 py-10">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
@@ -310,7 +310,7 @@ const ServicesPage = () => {
         )}
 
         {/* Bottom CTA */}
-        <div className="mt-12 rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-700 to-emerald-800 text-white p-8 md:p-10">
+        <div className="mt-12 rounded-3xl border border-emerald-100 bg-linear-to-r from-emerald-700 to-emerald-800 text-white p-8 md:p-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h2 className="text-2xl font-extrabold">Ready to book?</h2>
