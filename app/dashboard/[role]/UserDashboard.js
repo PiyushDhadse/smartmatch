@@ -1,52 +1,46 @@
 // app/dashboard/[role]/UserDashboard.js
 "use client";
-
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+// 1. Remove the old import: import { getMyBookings } from "../../lib/api";
+// 2. Add the direct supabase import:
 import { supabase } from "@/lib/supabase";
+
 export default function UserDashboard() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("bookings");
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock user data - fallback if session not ready
-  const user = {
-    name: session?.user?.name || "User",
-    email: session?.user?.email || "user@example.com",
-    avatar: session?.user?.image || null,
-    joinedDate: "January 2025",
-  };
-
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (!session?.user?.id) return;
+    async function fetchBookings() {
+      // Only fetch if we have a user ID from the session
+      if (session?.user?.id) {
+        setIsLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from("bookings")
+            .select("*") // You can add nested selects here later like '*, services(*)'
+            .eq("user_id", session.user.id)
+            .order("created_at", { ascending: false });
 
-      setIsLoading(true);
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(
-          `
-        *,
-        services (title, category),
-        service_providers (users (name))
-      `
-        )
-        .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching bookings:", error);
-      } else {
-        setBookings(data || []);
+          if (error) throw error;
+          setBookings(data || []);
+        } catch (err) {
+          console.error("Supabase Error:", err.message);
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (session === null) {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    };
+    }
 
     fetchBookings();
   }, [session]);
+
+  // ... rest of your component logic
 
   const getCategoryIcon = (category) => {
     const icons = {

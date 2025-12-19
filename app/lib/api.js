@@ -258,7 +258,7 @@ export async function createBooking(userId, bookingData) {
 /**
  * Get user's bookings (as customer)
  */
-export async function getMyBookings(userId, params = {}) {
+export const getMyBookings = async (userId) => {
   const queryParams = new URLSearchParams();
   if (params.status) queryParams.append("status", params.status);
   if (params.page) queryParams.append("page", params.page);
@@ -283,7 +283,7 @@ export async function getMyBookings(userId, params = {}) {
     page: response.page || 1,
     pages: response.pages || 1,
   };
-}
+};
 
 /**
  * Get provider's bookings
