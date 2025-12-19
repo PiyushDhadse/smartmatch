@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { supabase } from "@/backend/src/config/supabase";
-import { getMyBookings } from "@/backend/src/lib/api";
-
+import { getMyBookings } from "@/lib/api";
 export default function BookingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
