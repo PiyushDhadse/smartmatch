@@ -1,58 +1,106 @@
-'use client';
+"use client";
 
-import React, { useMemo, useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import ServiceCard from '../components/ServiceCard';
-import { getServices } from '../lib/api';
+import React, { useMemo, useState, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import ServiceCard from "../components/ServiceCard";
+
+// 1. Define Dummy Data
+const DUMMY_SERVICES = [
+  {
+    id: "1",
+    title: "Professional Home Cleaning",
+    description:
+      "Deep cleaning for houses and apartments using eco-friendly products.",
+    category: "cleaning",
+    price: 80,
+    rating: 4.8,
+    image:
+      "https://images.unsplash.com/photo-1581578731548-c64695cc6954?auto=format&fit=crop&q=80&w=400",
+  },
+  {
+    id: "2",
+    title: "Certified Electrician",
+    description:
+      "Expert wiring, lighting installation, and electrical repairs.",
+    category: "home",
+    price: 65,
+    rating: 4.9,
+    image:
+      "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&q=80&w=400",
+  },
+  {
+    id: "3",
+    title: "Math & Physics Tutor",
+    description:
+      "Personalized learning for high school and university students.",
+    category: "education",
+    price: 45,
+    rating: 5.0,
+    image:
+      "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=400",
+  },
+  {
+    id: "4",
+    title: "Landscape Design & Gardening",
+    description:
+      "Transform your backyard with professional landscaping and maintenance.",
+    category: "outdoor",
+    price: 120,
+    rating: 4.7,
+    image:
+      "https://images.unsplash.com/photo-1558905619-1725426377c2?auto=format&fit=crop&q=80&w=400",
+  },
+  {
+    id: "5",
+    title: "Kitchen Plumbing Repair",
+    description: "Fixing leaks, clogs, and installing new faucets or sinks.",
+    category: "home",
+    price: 75,
+    rating: 4.6,
+    image:
+      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=400",
+  },
+  {
+    id: "6",
+    title: "English Language Coaching",
+    description:
+      "Improve your speaking and writing skills for business or travel.",
+    category: "education",
+    price: 40,
+    rating: 4.9,
+    image:
+      "https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&q=80&w=400",
+  },
+];
 
 const ServicesContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') ?? '');
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') ?? 'all');
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Fetch services from API
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await getServices({
-          limit: 100, // Get more services for client-side filtering
-        });
-        setServices(response.data || []);
-      } catch (err) {
-        console.error('Failed to fetch services:', err);
-        setError('Failed to load services. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchServices();
-  }, []);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") ?? "");
+  const [selectedCategory, setSelectedCategory] = useState(
+    searchParams.get("category") ?? "all"
+  );
 
   const categories = [
-    { id: 'all', name: 'All', icon: '✨' },
-    { id: 'home', name: 'Home', icon: '🏠' },
-    { id: 'cleaning', name: 'Cleaning', icon: '🧼' },
-    { id: 'education', name: 'Education', icon: '🎓' },
-    { id: 'outdoor', name: 'Outdoor', icon: '🌿' }
+    { id: "all", name: "All", icon: "✨" },
+    { id: "home", name: "Home", icon: "🏠" },
+    { id: "cleaning", name: "Cleaning", icon: "🧼" },
+    { id: "education", name: "Education", icon: "🎓" },
+    { id: "outdoor", name: "Outdoor", icon: "🌿" },
   ];
 
+  // 2. Filter Dummy Data locally
   const filteredServices = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    return services.filter((service) => {
+    return DUMMY_SERVICES.filter((service) => {
       const matchesSearch =
         !q ||
         service.title.toLowerCase().includes(q) ||
         service.description.toLowerCase().includes(q);
-      const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
+      const matchesCategory =
+        selectedCategory === "all" || service.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [searchTerm, selectedCategory]);
@@ -67,7 +115,7 @@ const ServicesContent = () => {
               <div className="text-sm text-slate-600">
                 <Link href="/" className="hover:text-slate-900 transition">
                   Home
-                </Link>{' '}
+                </Link>
                 <span aria-hidden className="mx-2">
                   ›
                 </span>
@@ -77,7 +125,8 @@ const ServicesContent = () => {
                 Browse services
               </h1>
               <p className="mt-2 text-slate-600 max-w-2xl">
-                Search verified local providers, compare ratings, and book the right service for your needs.
+                Search verified local providers, compare ratings, and book the
+                right service for your needs.
               </p>
             </div>
 
@@ -104,7 +153,6 @@ const ServicesContent = () => {
         <div className="rounded-2xl border border-emerald-100 bg-white shadow-sm">
           <div className="p-5 md:p-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Search */}
               <div className="lg:col-span-6">
                 <label className="sr-only" htmlFor="search">
                   Search services
@@ -124,76 +172,46 @@ const ServicesContent = () => {
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                   <span className="font-medium text-slate-700">Popular:</span>
-                  {['Plumber', 'Electrician', 'Cleaning', 'Tutor'].map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setSearchTerm(tag)}
-                      className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-900 hover:bg-emerald-100 transition"
-                    >
-                      {tag}
-                    </button>
-                  ))}
+                  {["Plumber", "Electrician", "Cleaning", "Tutor"].map(
+                    (tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => setSearchTerm(tag)}
+                        className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-900 hover:bg-emerald-100 transition"
+                      >
+                        {tag}
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
 
-              {/* Category Pages Dropdown */}
               <div className="lg:col-span-3">
-                <label htmlFor="categoryPage" className="block text-sm font-semibold text-slate-800 mb-2">
+                <label
+                  htmlFor="categoryPage"
+                  className="block text-sm font-semibold text-slate-800 mb-2"
+                >
                   Category pages
                 </label>
-                <div className="relative">
-                  <select
-                    id="categoryPage"
-                    defaultValue=""
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (next) {
-                        router.push(next);
-                        e.target.value = '';
-                      }
-                    }}
-                    className="w-full appearance-none rounded-xl border border-emerald-100 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">Explore category pages</option>
-                    <option value="/services/electrical">⚡ Electrical Services</option>
-                    <option value="" disabled>
-                      🚰 Plumbing (coming soon)
-                    </option>
-                    <option value="" disabled>
-                      🧼 Cleaning (coming soon)
-                    </option>
-                    <option value="" disabled>
-                      🎓 Tutoring (coming soon)
-                    </option>
-                    <option value="" disabled>
-                      🌿 Gardening (coming soon)
-                    </option>
-                  </select>
-                  <svg
-                    aria-hidden="true"
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  Quick links to dedicated pages (you can add more later).
-                </p>
+                <select
+                  id="categoryPage"
+                  defaultValue=""
+                  onChange={(e) =>
+                    e.target.value && router.push(e.target.value)
+                  }
+                  className="w-full appearance-none rounded-xl border border-emerald-100 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">Explore category pages</option>
+                  <option value="/services/electrical">
+                    ⚡ Electrical Services
+                  </option>
+                </select>
               </div>
 
-              {/* Helper / CTA */}
               <div className="lg:col-span-3">
                 <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 h-full">
-                  <div className="text-sm font-semibold text-slate-900">Need help choosing?</div>
-                  <div className="mt-1 text-xs text-slate-600">
-                    Filter by category, then book in minutes. Track status in your dashboard.
+                  <div className="text-sm font-semibold text-slate-900">
+                    Need help choosing?
                   </div>
                   <Link
                     href="/dashboard/user"
@@ -207,70 +225,46 @@ const ServicesContent = () => {
 
             {/* Category Filter Chips */}
             <div className="mt-6 flex flex-wrap gap-2">
-              {categories.map((category) => {
-                const selected = selectedCategory === category.id;
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition border ${
-                      selected
-                        ? 'bg-emerald-700 border-emerald-700 text-white'
-                        : 'bg-white border-emerald-100 text-slate-700 hover:bg-emerald-50'
-                    }`}
-                  >
-                    <span aria-hidden>{category.icon}</span>
-                    <span>{category.name}</span>
-                  </button>
-                );
-              })}
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition border ${
+                    selectedCategory === category.id
+                      ? "bg-emerald-700 border-emerald-700 text-white"
+                      : "bg-white border-emerald-100 text-slate-700 hover:bg-emerald-50"
+                  }`}
+                >
+                  <span>{category.icon}</span>
+                  <span>{category.name}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Results header */}
+        {/* Results section */}
         <div className="mt-8 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <div className="text-sm text-slate-600">
-              Showing <span className="font-semibold text-slate-900">{filteredServices.length}</span> result(s)
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Tip: Use the Electrical category page for specialized filters.
-            </div>
+          <div className="text-sm text-slate-600">
+            Showing{" "}
+            <span className="font-semibold text-slate-900">
+              {filteredServices.length}
+            </span>{" "}
+            result(s)
           </div>
-
           <button
-            type="button"
             onClick={() => {
-              setSearchTerm('');
-              setSelectedCategory('all');
+              setSearchTerm("");
+              setSelectedCategory("all");
             }}
-            className="btn-secondary inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white text-slate-800 font-semibold hover:bg-emerald-50 transition px-4 py-2.5 text-sm"
+            className="text-sm font-semibold text-emerald-700 hover:text-emerald-800"
           >
             Clear filters
           </button>
         </div>
 
         {/* Services Grid */}
-        {loading ? (
-          <div className="mt-6 text-center py-14 bg-white border border-emerald-100 rounded-2xl">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-700 border-r-transparent"></div>
-            <p className="text-slate-600 mt-4">Loading services...</p>
-          </div>
-        ) : error ? (
-          <div className="mt-6 text-center py-14 bg-white border border-red-100 rounded-2xl">
-            <h3 className="text-xl font-semibold text-red-900">Error Loading Services</h3>
-            <p className="text-slate-600 mt-2">{error}</p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="btn-primary mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition px-5 py-2.5"
-            >
-              Retry
-            </button>
-          </div>
-        ) : filteredServices.length > 0 ? (
+        {filteredServices.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredServices.map((service) => (
               <ServiceCard key={service.id} service={service} />
@@ -278,64 +272,22 @@ const ServicesContent = () => {
           </div>
         ) : (
           <div className="mt-6 text-center py-14 bg-white border border-emerald-100 rounded-2xl">
-            <h3 className="text-xl font-semibold text-slate-900">No services found</h3>
-            <p className="text-slate-600 mt-2">Try adjusting your search or selecting a different category.</p>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('all');
-              }}
-              className="btn-primary mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition px-5 py-2.5"
-            >
-              Reset
-            </button>
+            <h3 className="text-xl font-semibold text-slate-900">
+              No services found
+            </h3>
+            <p className="text-slate-600 mt-2">Try adjusting your filters.</p>
           </div>
         )}
-
-        {/* Bottom CTA */}
-        <div className="mt-12 rounded-3xl border border-emerald-100 bg-linear-to-r from-emerald-700 to-emerald-800 text-white p-8 md:p-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div>
-              <h2 className="text-2xl font-extrabold">Ready to book?</h2>
-              <p className="mt-2 text-white/90 max-w-2xl">
-                Pick a service, choose a time slot, and track confirmation from your dashboard.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/booking"
-                className="inline-flex items-center justify-center rounded-xl bg-white text-emerald-800 font-bold px-5 py-3 hover:bg-emerald-50 transition"
-              >
-                Start booking
-              </Link>
-              <Link
-                href="/services/electrical"
-                className="inline-flex items-center justify-center rounded-xl border border-white/40 text-white font-bold px-5 py-3 hover:bg-white/10 transition"
-              >
-                Explore Electrical →
-              </Link>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
 };
 
-const ServicesPage = () => {
+// Main Export
+export default function ServicesPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-700 border-r-transparent"></div>
-          <p className="text-slate-600 mt-4">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<div>Loading...</div>}>
       <ServicesContent />
     </Suspense>
   );
-};
-
-export default ServicesPage;
+}
