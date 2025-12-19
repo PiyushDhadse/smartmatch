@@ -33,7 +33,6 @@ export default function BookingPage() {
   }, [selectedCategory]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBookingId(Date.now().toString().slice(-6));
   }, []);
 
