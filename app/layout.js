@@ -13,13 +13,16 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-cream text-slate">
+      <body>
         <SessionProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+        <Navbar/>
+        {children}
+        <Footer/>
+        {/* ThinkStack AI Chatbot */}
+        <script src='https://www.noupe.com/embed/019b3379d0fb717cb2ab08c3dc55a4315c07.js'></script>
+        <script src="https://cdn.thinkstack.ai/widget.js" async></script>
         </SessionProvider>
       </body>
     </html>
-  );
+  )
 }

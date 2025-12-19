@@ -102,10 +102,10 @@ export default function HomePage() {
       </section>
 
       {/* Services Section */}
-      <section className="py-16 lg:py-24 bg-cream">
+      <section className="py-16 lg:py-24 bg-emerald-700">
         <div className="max-w-7xl mx-auto px-5">
           <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-slate mb-3">
+            <h2 className="text-3xl lg:text-4xl font-bold text-slate mb-3 text-white">
               Popular Services
             </h2>
             <p className="text-sage">
@@ -163,7 +163,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 lg:py-24 bg-forest">
+      <section className="py-16 lg:py-24 bg-emerald-700 text-center">
         <div className="max-w-3xl mx-auto px-5 text-center">
           <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
