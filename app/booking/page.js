@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabaseclient";
+
 export default function BookingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,32 +75,14 @@ export default function BookingPage() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    // API call will be implemented here
+    console.log("Booking submitted:", bookingData);
 
-    const { data, error } = await supabase
-      .from("bookings") // Ensure your table name is 'bookings'
-      .insert([
-        {
-          service_id: bookingData.service,
-          provider_id: bookingData.provider,
-          booking_date: bookingData.date,
-          time_slot: bookingData.time,
-          address: bookingData.address,
-          city: bookingData.city,
-          status: "pending",
-          user_id: session?.user?.id, // Get this from next-auth session
-          total_price: bookingData.price,
-        },
-      ])
-      .select();
-
-    if (error) {
-      console.error("Error booking service:", error.message);
-      alert("Booking failed. Please try again.");
-    } else {
-      setBookingId(data[0].id); // Use the real ID from Supabase
-      setCurrentStep(4); // Show success state
-    }
-    setIsSubmitting(false);
+    // Simulate API call
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setCurrentStep(4); // Success step
+    }, 1500);
   };
 
   const canProceed = () => {
