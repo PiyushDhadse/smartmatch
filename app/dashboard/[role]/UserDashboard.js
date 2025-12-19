@@ -1,45 +1,91 @@
 // app/dashboard/[role]/UserDashboard.js
 "use client";
+
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-// 1. Remove the old import: import { getMyBookings } from "../../lib/api";
-// 2. Add the direct supabase import:
-import { supabase } from "@/lib/supabaseclient";
+import { getMyBookings } from "../../lib/api";
+
 export default function UserDashboard() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("bookings");
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Mock user data - fallback if session not ready
+  const user = {
+    name: session?.user?.name || "User",
+    email: session?.user?.email || "user@example.com",
+    avatar: session?.user?.image || null,
+    joinedDate: "January 2025",
+  };
+
   useEffect(() => {
-    async function fetchBookings() {
-      // Only fetch if we have a user ID from the session
-      if (session?.user?.id) {
-        setIsLoading(true);
-        try {
-          const { data, error } = await supabase
-            .from("bookings")
-            .select("*") // You can add nested selects here later like '*, services(*)'
-            .eq("user_id", session.user.id)
-            .order("created_at", { ascending: false });
+    setIsLoading(true);
 
-          if (error) throw error;
-          setBookings(data || []);
-        } catch (err) {
-          console.error("Supabase Error:", err.message);
-        } finally {
-          setIsLoading(false);
-        }
-      } else if (session === null) {
-        setIsLoading(false);
-      }
-    }
+    // Simulate API delay
+    const timer = setTimeout(() => {
+      const mockBookings = [
+        {
+          id: "BK-8821",
+          status: "pending",
+          booking_date: "2025-12-24",
+          time_slot: "11:30 AM",
+          services: {
+            title: "Emergency Pipe Repair",
+            category: "Plumbing",
+          },
+          service_providers: {
+            users: { name: "Mario Bros Plumbing" },
+          },
+        },
+        {
+          id: "BK-7742",
+          status: "confirmed",
+          booking_date: "2025-12-21",
+          time_slot: "09:00 AM",
+          services: {
+            title: "Deep House Cleaning",
+            category: "Cleaning",
+          },
+          service_providers: {
+            users: { name: "Sparkle Cleaners" },
+          },
+        },
+        {
+          id: "BK-1102",
+          status: "completed",
+          booking_date: "2025-12-10",
+          time_slot: "02:00 PM",
+          services: {
+            title: "Living Room Repaint",
+            category: "Painting",
+          },
+          service_providers: {
+            users: { name: "Artistic Walls Co." },
+          },
+        },
+        {
+          id: "BK-5590",
+          status: "cancelled",
+          booking_date: "2025-12-05",
+          time_slot: "04:30 PM",
+          services: {
+            title: "Math Tutoring (Algebra)",
+            category: "Tutoring",
+          },
+          service_providers: {
+            users: { name: "Prof. Oak" },
+          },
+        },
+      ];
 
-    fetchBookings();
+      setBookings(mockBookings);
+      setIsLoading(false);
+    }, 800);
+
+    return () => clearTimeout(timer);
   }, [session]);
-
-  // ... rest of your component logic
 
   const getCategoryIcon = (category) => {
     const icons = {
