@@ -21,18 +21,70 @@ export default function UserDashboard() {
   };
 
   useEffect(() => {
-    if (session?.user?.id) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsLoading(true);
-      getMyBookings(session.user.id)
-        .then((res) => {
-          setBookings(res.data || []);
-        })
-        .catch((err) => console.error(err))
-        .finally(() => setIsLoading(false));
-    } else if (session === null) {
+    setIsLoading(true);
+
+    // Simulate API delay
+    const timer = setTimeout(() => {
+      const mockBookings = [
+        {
+          id: "BK-8821",
+          status: "pending",
+          booking_date: "2025-12-24",
+          time_slot: "11:30 AM",
+          services: {
+            title: "Emergency Pipe Repair",
+            category: "Plumbing",
+          },
+          service_providers: {
+            users: { name: "Mario Bros Plumbing" },
+          },
+        },
+        {
+          id: "BK-7742",
+          status: "confirmed",
+          booking_date: "2025-12-21",
+          time_slot: "09:00 AM",
+          services: {
+            title: "Deep House Cleaning",
+            category: "Cleaning",
+          },
+          service_providers: {
+            users: { name: "Sparkle Cleaners" },
+          },
+        },
+        {
+          id: "BK-1102",
+          status: "completed",
+          booking_date: "2025-12-10",
+          time_slot: "02:00 PM",
+          services: {
+            title: "Living Room Repaint",
+            category: "Painting",
+          },
+          service_providers: {
+            users: { name: "Artistic Walls Co." },
+          },
+        },
+        {
+          id: "BK-5590",
+          status: "cancelled",
+          booking_date: "2025-12-05",
+          time_slot: "04:30 PM",
+          services: {
+            title: "Math Tutoring (Algebra)",
+            category: "Tutoring",
+          },
+          service_providers: {
+            users: { name: "Prof. Oak" },
+          },
+        },
+      ];
+
+      setBookings(mockBookings);
       setIsLoading(false);
-    }
+    }, 800);
+
+    return () => clearTimeout(timer);
   }, [session]);
 
   const getCategoryIcon = (category) => {
