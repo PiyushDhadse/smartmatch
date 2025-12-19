@@ -4,8 +4,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { getMyBookings } from "../../lib/api";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase";
 export default function UserDashboard() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("bookings");
