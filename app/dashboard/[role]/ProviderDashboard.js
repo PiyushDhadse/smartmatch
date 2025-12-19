@@ -450,36 +450,6 @@ export default function ProviderDashboard() {
                 </button>
               </div>
             </div>
-
-            {/* Score Breakdown */}
-            <div className="bg-linear-to-br from-forest to-slate rounded-2xl p-6 text-white">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xl">📊</span>
-                <h3 className="font-semibold">Score Breakdown</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-cream">Availability</span>
-                  <span className="font-medium">+40</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-cream">Urgency Match</span>
-                  <span className="font-medium">+20</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-cream">Rating Bonus</span>
-                  <span className="font-medium">+49</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-cream">Distance Factor</span>
-                  <span className="font-medium">-17</span>
-                </div>
-                <div className="pt-3 border-t border-white/20 flex justify-between items-center">
-                  <span className="font-medium">Total Score</span>
-                  <span className="text-xl font-bold">92</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
