@@ -272,20 +272,6 @@ export default function UserDashboard() {
                 </button>
               </div>
             </div>
-
-            {/* AI Recommendation Teaser */}
-            <div className="bg-linear-to-br from-forest to-slate rounded-2xl p-6 text-white">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xl">🤖</span>
-                <h3 className="font-semibold">AI Assistant</h3>
-              </div>
-              <p className="text-sm text-cream mb-4">
-                Get personalized service recommendations based on your needs.
-              </p>
-              <button className="w-full bg-white text-forest py-2.5 px-4 rounded-xl font-medium text-sm hover:bg-cream transition-all">
-                Ask SmartMatch AI
-              </button>
-            </div>
           </div>
         </div>
       </div>
