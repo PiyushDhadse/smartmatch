@@ -4,51 +4,65 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { getProviderBookings, updateBookingStatus } from "../../lib/api";
+import {
+  getProviderBookings,
+  updateBookingStatus,
+  getMyServices,
+} from "../../lib/api";
 
 export default function ProviderDashboard() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("requests");
   const [isAvailable, setIsAvailable] = useState(true);
   const [bookings, setBookings] = useState([]);
+  const [services, setServices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock provider data - will come from NextAuth session & API
+  // Provider data from session and API
   const provider = {
     name: session?.user?.name || "Provider",
     email: session?.user?.email || "provider@example.com",
-    service: "Plumbing", // This should be dynamic based on services
-    icon: "🔧",
+    service: services.length > 0 ? services[0].title : "General Service",
+    icon:
+      services.length > 0 && services[0].category
+        ? services[0].category.icon
+        : "🔧",
     joinedDate: "December 2024",
     rating: 4.9,
     totalReviews: 47,
     smartScore: 92,
   };
 
-  const fetchBookings = useCallback(() => {
+  const fetchData = useCallback(async () => {
     if (!session?.user?.id) return;
     setIsLoading(true);
-    getProviderBookings(session.user.id)
-      .then((res) => {
-        setBookings(res.data || []);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setIsLoading(false));
+    try {
+      const [bookingsRes, servicesRes] = await Promise.all([
+        getProviderBookings(session.user.id),
+        getMyServices(session.user.id),
+      ]);
+      setBookings(bookingsRes.data || []);
+      setServices(servicesRes.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [session]);
 
   useEffect(() => {
     if (session?.user?.id) {
-      fetchBookings();
+      fetchData();
     } else if (session === null) {
       setIsLoading(false);
     }
-  }, [session, fetchBookings]);
+  }, [session, fetchData]);
 
   const handleUpdateStatus = async (id, status) => {
     try {
       await updateBookingStatus(session.user.id, id, status);
       // Refresh bookings
-      fetchBookings();
+      fetchData();
     } catch (error) {
       console.error("Failed to update status:", error);
       alert("Failed to update status");
@@ -59,6 +73,18 @@ export default function ProviderDashboard() {
   const handleStart = (id) => handleUpdateStatus(id, "in_progress");
   const handleDecline = (id) => handleUpdateStatus(id, "cancelled");
   const handleComplete = (id) => handleUpdateStatus(id, "completed");
+
+  const calculateEarnings = () => {
+    return bookings
+      .filter((b) => b.status === "completed")
+      .reduce((total, b) => {
+        // Assuming price is available in b.services.price
+        const price = parseFloat(b.services?.price || 0);
+        return total + price;
+      }, 0);
+  };
+
+  const earnings = calculateEarnings();
 
   const stats = [
     {
@@ -75,9 +101,9 @@ export default function ProviderDashboard() {
     },
     {
       label: "Earnings",
-      value: "$4,250",
+      value: `$${earnings.toLocaleString()}`,
       icon: "💰",
-      trend: "+$850 this week",
+      trend: "Total earnings",
     },
     {
       label: "Pending",
@@ -292,18 +318,26 @@ export default function ProviderDashboard() {
                               </button>
                             </>
                           )}
-                          {booking.status === "confirmed" && (
+                          {booking.status === "accepted" && (
                             <>
                               <button
-                                onClick={() => handleComplete(booking.id)}
-                                className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-all"
+                                onClick={() => handleStart(booking.id)}
+                                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-all"
                               >
-                                ✓ Mark Complete
+                                ▶ Start Job
                               </button>
                               <button className="px-4 py-2 bg-white text-slate text-sm font-medium rounded-lg border border-cream hover:bg-cream transition-all">
                                 📞 Contact
                               </button>
                             </>
+                          )}
+                          {booking.status === "in_progress" && (
+                            <button
+                              onClick={() => handleComplete(booking.id)}
+                              className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-all"
+                            >
+                              ✓ Mark Complete
+                            </button>
                           )}
                           {booking.status === "completed" && (
                             <span className="text-sm text-green-500 font-medium">

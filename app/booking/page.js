@@ -282,9 +282,15 @@ export default function BookingPage() {
                               </p>
                               <div className="flex items-center gap-3 text-sm mt-1">
                                 <span className="text-sage">⭐ {rating}</span>
-                                <span className="text-green-500">
-                                  ● Available
-                                </span>
+                                {isAvailable ? (
+                                  <span className="text-green-500">
+                                    ● Available
+                                  </span>
+                                ) : (
+                                  <span className="text-red-500">
+                                    ● Busy
+                                  </span>
+                                )}
                                 <span className="font-bold text-forest ml-2">
                                   ${service.price}
                                 </span>
