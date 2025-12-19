@@ -5,8 +5,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 // 1. Remove the old import: import { getMyBookings } from "../../lib/api";
 // 2. Add the direct supabase import:
-import { supabase } from "@/lib/supabaseclient";
-
+import { supabase } from "@/app/lib/supabaseClient";
 export default function UserDashboard() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("bookings");
