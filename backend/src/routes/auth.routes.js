@@ -14,6 +14,27 @@ const {
 } = require("../middlewares/auth.middleware");
 
 /**
+ * @route   GET /api/auth
+ * @desc    Show available auth endpoints
+ * @access  Public
+ */
+router.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Auth API endpoints",
+    endpoints: {
+      info: "GET /api/auth",
+      syncUser: "POST /api/auth/sync-user",
+      getProfile: "GET /api/auth/profile",
+      updateProfile: "PUT /api/auth/profile",
+      becomeProvider: "POST /api/auth/become-provider",
+      updateAvailability: "PATCH /api/auth/provider/availability",
+      getProviderStats: "GET /api/auth/provider/stats",
+    },
+  });
+});
+
+/**
  * @route   POST /api/auth/sync-user
  * @desc    Sync user from NextAuth to Supabase users table
  * @access  Public (called from NextAuth callback)

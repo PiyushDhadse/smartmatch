@@ -2,17 +2,22 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { getProviderBookings, updateBookingStatus } from "../../lib/api";
 
 export default function ProviderDashboard() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("requests");
   const [isAvailable, setIsAvailable] = useState(true);
+  const [bookings, setBookings] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Mock provider data - will come from NextAuth session & API
   const provider = {
-    name: "John Mitchell",
-    email: "john@plumbing.com",
-    service: "Plumbing",
+    name: session?.user?.name || "Provider",
+    email: session?.user?.email || "provider@example.com",
+    service: "Plumbing", // This should be dynamic based on services
     icon: "🔧",
     joinedDate: "December 2024",
     rating: 4.9,
@@ -20,60 +25,65 @@ export default function ProviderDashboard() {
     smartScore: 92,
   };
 
-  // Mock booking requests - will come from API
-  const bookingRequests = [
-    {
-      id: "SM-284731",
-      customer: "Alex Johnson",
-      service: "Pipe Repair",
-      date: "2025-01-20",
-      time: "10:00 AM",
-      status: "pending",
-      address: "123 Main St, New York",
-      urgency: "normal",
-    },
-    {
-      id: "SM-284745",
-      customer: "Sarah Williams",
-      service: "Drain Cleaning",
-      date: "2025-01-21",
-      time: "02:00 PM",
-      status: "pending",
-      address: "789 Elm St, New York",
-      urgency: "urgent",
-    },
-    {
-      id: "SM-284652",
-      customer: "Mike Brown",
-      service: "Water Heater",
-      date: "2025-01-18",
-      time: "11:00 AM",
-      status: "confirmed",
-      address: "456 Oak Ave, New York",
-      urgency: "normal",
-    },
-    {
-      id: "SM-284589",
-      customer: "Emily Davis",
-      service: "Faucet Installation",
-      date: "2025-01-15",
-      time: "09:00 AM",
-      status: "completed",
-      address: "321 Pine Rd, New York",
-      urgency: "low",
-    },
-  ];
+  const fetchBookings = () => {
+    setIsLoading(true);
+    getProviderBookings(session.user.id)
+      .then((res) => {
+        setBookings(res.data || []);
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setIsLoading(false));
+  };
+  useEffect(() => {
+    if (session?.user?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchBookings();
+    } else if (session === null) {
+      setIsLoading(false);
+    }
+  }, [session ,fetchBookings]);
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await updateBookingStatus(session.user.id, id, status);
+      // Refresh bookings
+      fetchBookings();
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      alert("Failed to update status");
+    }
+  };
+
+  const handleAccept = (id) => handleUpdateStatus(id, "accepted");
+  const handleStart = (id) => handleUpdateStatus(id, "in_progress");
+  const handleDecline = (id) => handleUpdateStatus(id, "cancelled");
+  const handleComplete = (id) => handleUpdateStatus(id, "completed");
 
   const stats = [
-    { label: "Total Jobs", value: "47", icon: "📋", trend: "+5 this week" },
-    { label: "Completed", value: "42", icon: "✅", trend: "89% rate" },
+    {
+      label: "Total Jobs",
+      value: bookings.length.toString(),
+      icon: "📋",
+      trend: "Total",
+    },
+    {
+      label: "Completed",
+      value: bookings.filter((b) => b.status === "completed").length.toString(),
+      icon: "✅",
+      trend: "All time",
+    },
     {
       label: "Earnings",
       value: "$4,250",
       icon: "💰",
       trend: "+$850 this week",
     },
-    { label: "Pending", value: "3", icon: "⏳", trend: "Respond soon" },
+    {
+      label: "Pending",
+      value: bookings.filter((b) => b.status === "pending").length.toString(),
+      icon: "⏳",
+      trend: "Respond soon",
+    },
   ];
 
   const getStatusBadge = (status) => {
@@ -93,21 +103,6 @@ export default function ProviderDashboard() {
       urgent: "bg-red-100 text-red-600",
     };
     return styles[urgency] || styles.normal;
-  };
-
-  const handleAccept = (id) => {
-    console.log("Accepted booking:", id);
-    // API call will be implemented here
-  };
-
-  const handleDecline = (id) => {
-    console.log("Declined booking:", id);
-    // API call will be implemented here
-  };
-
-  const handleComplete = (id) => {
-    console.log("Completed booking:", id);
-    // API call will be implemented here
   };
 
   return (
@@ -192,10 +187,7 @@ export default function ProviderDashboard() {
                     {tab === "completed" && "Completed"}
                     {tab === "requests" && (
                       <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                        {
-                          bookingRequests.filter((b) => b.status === "pending")
-                            .length
-                        }
+                        {bookings.filter((b) => b.status === "pending").length}
                       </span>
                     )}
                   </button>
@@ -204,122 +196,141 @@ export default function ProviderDashboard() {
 
               {/* Bookings List */}
               <div className="p-4">
-                {bookingRequests
-                  .filter((booking) => {
+                {isLoading ? (
+                  <div className="text-center py-12 text-sage">
+                    Loading bookings...
+                  </div>
+                ) : (
+                  bookings
+                    .filter((booking) => {
+                      if (activeTab === "requests")
+                        return booking.status === "pending";
+                      if (activeTab === "upcoming")
+                        return ["accepted", "in_progress"].includes(
+                          booking.status
+                        );
+                      return (
+                        booking.status === "completed" ||
+                        booking.status === "cancelled"
+                      );
+                    })
+                    .map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="p-4 rounded-xl hover:bg-cream/50 transition-all mb-3 border border-cream"
+                      >
+                        {/* Top Row */}
+                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-3">
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 bg-forest rounded-full flex items-center justify-center text-white text-lg font-semibold">
+                              {booking.users?.name?.charAt(0) || "U"}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-slate">
+                                {booking.users?.name || "Unknown User"}
+                              </h4>
+                              <p className="text-sm text-sage">
+                                {booking.services?.title}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="text-xs text-sage">
+                                  📅 {booking.booking_date}
+                                </span>
+                                <span className="text-xs text-sage">
+                                  🕐 {booking.time_slot}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 ml-16 md:ml-0">
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${getUrgencyBadge(
+                                booking.urgency || "normal"
+                              )}`}
+                            >
+                              {(booking.urgency || "normal")
+                                .charAt(0)
+                                .toUpperCase() +
+                                (booking.urgency || "normal").slice(1)}
+                            </span>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                                booking.status
+                              )}`}
+                            >
+                              {booking.status.charAt(0).toUpperCase() +
+                                booking.status.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Address */}
+                        <div className="ml-16 mb-3">
+                          <p className="text-sm text-sage">
+                            📍 {booking.address}
+                          </p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="ml-16 flex flex-wrap gap-2">
+                          {booking.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => handleAccept(booking.id)}
+                                className="px-4 py-2 bg-forest text-white text-sm font-medium rounded-lg hover:bg-slate transition-all"
+                              >
+                                ✓ Accept
+                              </button>
+                              <button
+                                onClick={() => handleDecline(booking.id)}
+                                className="px-4 py-2 bg-white text-red-500 text-sm font-medium rounded-lg border border-red-200 hover:bg-red-50 transition-all"
+                              >
+                                ✕ Decline
+                              </button>
+                            </>
+                          )}
+                          {booking.status === "confirmed" && (
+                            <>
+                              <button
+                                onClick={() => handleComplete(booking.id)}
+                                className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-all"
+                              >
+                                ✓ Mark Complete
+                              </button>
+                              <button className="px-4 py-2 bg-white text-slate text-sm font-medium rounded-lg border border-cream hover:bg-cream transition-all">
+                                📞 Contact
+                              </button>
+                            </>
+                          )}
+                          {booking.status === "completed" && (
+                            <span className="text-sm text-green-500 font-medium">
+                              ✓ Job completed successfully
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                )}
+
+                {!isLoading &&
+                  bookings.filter((booking) => {
                     if (activeTab === "requests")
                       return booking.status === "pending";
                     if (activeTab === "upcoming")
-                      return booking.status === "confirmed";
-                    return booking.status === "completed";
-                  })
-                  .map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="p-4 rounded-xl hover:bg-cream/50 transition-all mb-3 border border-cream"
-                    >
-                      {/* Top Row */}
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-3">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-forest rounded-full flex items-center justify-center text-white text-lg font-semibold">
-                            {booking.customer.charAt(0)}
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-slate">
-                              {booking.customer}
-                            </h4>
-                            <p className="text-sm text-sage">
-                              {booking.service}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <span className="text-xs text-sage">
-                                📅 {booking.date}
-                              </span>
-                              <span className="text-xs text-sage">
-                                🕐 {booking.time}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 ml-16 md:ml-0">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${getUrgencyBadge(
-                              booking.urgency
-                            )}`}
-                          >
-                            {booking.urgency.charAt(0).toUpperCase() +
-                              booking.urgency.slice(1)}
-                          </span>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                              booking.status
-                            )}`}
-                          >
-                            {booking.status.charAt(0).toUpperCase() +
-                              booking.status.slice(1)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Address */}
-                      <div className="ml-16 mb-3">
-                        <p className="text-sm text-sage">
-                          📍 {booking.address}
-                        </p>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="ml-16 flex flex-wrap gap-2">
-                        {booking.status === "pending" && (
-                          <>
-                            <button
-                              onClick={() => handleAccept(booking.id)}
-                              className="px-4 py-2 bg-forest text-white text-sm font-medium rounded-lg hover:bg-slate transition-all"
-                            >
-                              ✓ Accept
-                            </button>
-                            <button
-                              onClick={() => handleDecline(booking.id)}
-                              className="px-4 py-2 bg-white text-red-500 text-sm font-medium rounded-lg border border-red-200 hover:bg-red-50 transition-all"
-                            >
-                              ✕ Decline
-                            </button>
-                          </>
-                        )}
-                        {booking.status === "confirmed" && (
-                          <>
-                            <button
-                              onClick={() => handleComplete(booking.id)}
-                              className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-all"
-                            >
-                              ✓ Mark Complete
-                            </button>
-                            <button className="px-4 py-2 bg-white text-slate text-sm font-medium rounded-lg border border-cream hover:bg-cream transition-all">
-                              📞 Contact
-                            </button>
-                          </>
-                        )}
-                        {booking.status === "completed" && (
-                          <span className="text-sm text-green-500 font-medium">
-                            ✓ Job completed successfully
-                          </span>
-                        )}
-                      </div>
+                      return ["accepted", "in_progress"].includes(
+                        booking.status
+                      );
+                    return (
+                      booking.status === "completed" ||
+                      booking.status === "cancelled"
+                    );
+                  }).length === 0 && (
+                    <div className="text-center py-12">
+                      <span className="text-4xl block mb-3">📭</span>
+                      <p className="text-sage">No bookings found</p>
                     </div>
-                  ))}
-
-                {bookingRequests.filter((booking) => {
-                  if (activeTab === "requests")
-                    return booking.status === "pending";
-                  if (activeTab === "upcoming")
-                    return booking.status === "confirmed";
-                  return booking.status === "completed";
-                }).length === 0 && (
-                  <div className="text-center py-12">
-                    <span className="text-4xl block mb-3">📭</span>
-                    <p className="text-sage">No bookings found</p>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </div>

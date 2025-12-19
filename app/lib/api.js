@@ -214,6 +214,10 @@ export async function updateBookingStatus(token, bookingId, status) {
   });
 }
 
+export async function getAvailableSlots(serviceId, date) {
+  return fetchAPI(`/bookings/available-slots?service_id=${serviceId}&date=${date}`);
+}
+
 export default {
   syncUser,
   getProfile,
@@ -230,4 +234,5 @@ export default {
   getMyBookings,
   getProviderBookings,
   updateBookingStatus,
+  getAvailableSlots,
 };

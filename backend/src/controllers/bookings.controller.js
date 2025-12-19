@@ -7,7 +7,15 @@ const { sendSuccess, sendError, sendPaginated } = require("../utils/response");
  */
 const createBooking = async (req, res) => {
   try {
-    const { service_id, booking_date, time_slot } = req.body;
+    const {
+      service_id,
+      booking_date,
+      time_slot,
+      address,
+      city,
+      urgency,
+      notes,
+    } = req.body;
     const userId = req.user.id;
 
     // Validation
@@ -57,6 +65,10 @@ const createBooking = async (req, res) => {
         provider_id: service.provider_id,
         booking_date,
         time_slot,
+        address,
+        city,
+        urgency,
+        notes,
         status: "pending",
       })
       .select(
