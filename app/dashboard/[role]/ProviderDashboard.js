@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { getProviderBookings, updateBookingStatus } from "../../lib/api";
 
@@ -25,7 +25,8 @@ export default function ProviderDashboard() {
     smartScore: 92,
   };
 
-  const fetchBookings = () => {
+  const fetchBookings = useCallback(() => {
+    if (!session?.user?.id) return;
     setIsLoading(true);
     getProviderBookings(session.user.id)
       .then((res) => {
@@ -33,15 +34,15 @@ export default function ProviderDashboard() {
       })
       .catch((err) => console.error(err))
       .finally(() => setIsLoading(false));
-  };
+  }, [session]);
+
   useEffect(() => {
     if (session?.user?.id) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchBookings();
     } else if (session === null) {
       setIsLoading(false);
     }
-  }, [session ,fetchBookings]);
+  }, [session, fetchBookings]);
 
   const handleUpdateStatus = async (id, status) => {
     try {
@@ -88,7 +89,8 @@ export default function ProviderDashboard() {
 
   const getStatusBadge = (status) => {
     const styles = {
-      confirmed: "bg-blue-100 text-blue-600",
+      accepted: "bg-blue-100 text-blue-600",
+      in_progress: "bg-purple-100 text-purple-600",
       pending: "bg-yellow-100 text-yellow-600",
       completed: "bg-green-100 text-green-600",
       cancelled: "bg-red-100 text-red-600",

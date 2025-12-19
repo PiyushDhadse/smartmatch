@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { createBooking, getServices } from "../lib/api";
+import { createBooking, getServices, getAvailableSlots } from "../lib/api";
 
 export default function BookingPage() {
   const { data: session } = useSession();
@@ -14,6 +14,9 @@ export default function BookingPage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [availableServices, setAvailableServices] = useState([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
+
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
   useEffect(() => {
     if (selectedCategory) {
@@ -340,19 +343,31 @@ export default function BookingPage() {
                   Select time slot
                 </label>
                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                  {timeSlots.map((time) => (
-                    <button
-                      key={time}
-                      onClick={() => handleInputChange("time", time)}
-                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-all border-2 ${
-                        bookingData.time === time
-                          ? "border-forest bg-forest text-white"
-                          : "border-cream hover:border-sage text-slate"
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
+                  {isLoadingSlots ? (
+                    <div className="col-span-full text-center py-4 text-sage">
+                      Loading available slots...
+                    </div>
+                  ) : availableTimeSlots.length > 0 ? (
+                    availableTimeSlots.map((time) => (
+                      <button
+                        key={time}
+                        onClick={() => handleInputChange("time", time)}
+                        className={`py-3 px-4 rounded-lg text-sm font-medium transition-all border-2 ${
+                          bookingData.time === time
+                            ? "border-forest bg-forest text-white"
+                            : "border-cream hover:border-sage text-slate"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-4 text-sage border border-dashed border-gray-300 rounded-lg">
+                      {bookingData.date
+                        ? "No available slots for this date."
+                        : "Please select a date first."}
+                    </div>
+                  )}
                 </div>
               </div>
 
