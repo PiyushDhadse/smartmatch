@@ -3,15 +3,50 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
 
-  const handleGitHubLogin = async () => {
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      setError("Please enter both email and password");
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
     try {
       setIsLoading(true);
-      await signIn("github", { callbackUrl: "/dashboard/user" });
+      setError("");
+
+      // TODO: Implement your custom authentication logic here
+      // Example: const response = await fetch('/api/auth/login', {...})
+      // For now, we'll simulate authentication
+      console.log("Login attempt with:", { email, password });
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // TODO: Replace with actual authentication logic
+      // After successful authentication:
+      // 1. Save token to localStorage/cookies
+      // 2. Update auth state
+      // 3. Redirect to dashboard
+
+      router.push("/dashboard/user");
+    } catch (error) {
+      setError("Invalid email or password");
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -34,64 +69,91 @@ export default function LoginPage() {
 
         {/* Login Card */}
         <div className="bg-white rounded-2xl p-8 shadow-lg border border-cream">
-          {/* GitHub Login Button */}
-          <button
-            onClick={handleGitHubLogin}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 bg-slate text-white py-4 px-6 rounded-xl font-medium text-base transition-all duration-300 hover:bg-forest hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-          >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Signing in...
-              </span>
-            ) : (
-              <>
-                <svg
-                  className="w-6 h-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                </svg>
-                Continue with GitHub
-              </>
+          <form onSubmit={handleEmailLogin}>
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 text-sm text-center">{error}</p>
+              </div>
             )}
-          </button>
+
+            {/* Email Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-cream rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent text-slate placeholder-sage"
+                placeholder="you@example.com"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Password Input */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-slate">
+                  Password
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-forest hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-cream rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent text-slate placeholder-sage"
+                placeholder="Enter your password"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Login Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 bg-slate text-white py-4 px-6 rounded-xl font-medium text-base transition-all duration-300 hover:bg-forest hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mb-6"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Signing in...
+                </span>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+          </form>
 
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">
             <div className="flex-1 h-px bg-cream"></div>
             <span className="text-sm text-sage">or</span>
             <div className="flex-1 h-px bg-cream"></div>
-          </div>
-
-          {/* Role Selection Info */}
-          <div className="bg-cream rounded-xl p-4 mb-6">
-            <p className="text-sm text-slate text-center">
-              <Link href="/register" className="hover:text-forest transition-colors">
-                <span className="font-medium">New to SmartMatch?</span>
-              </Link>
-              <br />
-              <span className="text-sage">
-                Sign up to book services or become a provider
-              </span>
-            </p>
           </div>
 
           {/* Register Link */}
@@ -106,13 +168,13 @@ export default function LoginPage() {
         {/* Footer Text */}
         <p className="text-center text-sm text-sage mt-6">
           By signing in, you agree to our{" "}
-          <span className="text-forest cursor-pointer hover:underline">
+          <Link href="/terms" className="text-forest hover:underline">
             Terms of Service
-          </span>{" "}
+          </Link>{" "}
           and{" "}
-          <span className="text-forest cursor-pointer hover:underline">
+          <Link href="/privacy" className="text-forest hover:underline">
             Privacy Policy
-          </span>
+          </Link>
         </p>
       </div>
     </div>

@@ -1,108 +1,93 @@
-// backend/src/middlewares/auth.middleware.js
-const { supabase } = require("../config/supabase");
-const { sendError } = require("../utils/response");
+// middlewares/auth.middleware.js
+const AuthUtils = require('../utils/auth');
+const supabase = require('../config/supabase');
+const ApiResponse = require('../utils/response');
 
-/**
- * Authenticate user via user ID in headers
- * Frontend should send: { "x-user-id": "user-uuid" }
- */
-const authenticate = async (req, res, next) => {
-  try {
-    let userId = req.headers["x-user-id"];
-
-    // Also check Authorization header
-    if (!userId && req.headers.authorization) {
+class AuthMiddleware {
+  // Verify JWT token and set user in request
+  static async verifyToken(req, res, next) {
+    try {
       const authHeader = req.headers.authorization;
-      if (authHeader.startsWith("Bearer ")) {
-        userId = authHeader.substring(7);
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return ApiResponse.unauthorized(res, 'No token provided');
       }
-    }
 
-    if (!userId) {
-      return sendError(res, "Authentication required. Missing user ID.", 401);
-    }
+      const token = authHeader.split(' ')[1];
+      const decoded = AuthUtils.verifyToken(token);
 
-    // Fetch user from database
-    const { data: user, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
+      if (!decoded) {
+        return ApiResponse.unauthorized(res, 'Invalid or expired token');
+      }
 
-    if (error || !user) {
-      return sendError(res, "User not found", 401);
-    }
-
-    // Attach user to request object
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error("Auth middleware error:", error);
-    sendError(res, "Authentication failed", 500, error.message);
-  }
-};
-
-/**
- * Require user to be a provider
- */
-const requireProvider = async (req, res, next) => {
-  try {
-    if (!req.user) {
-      return sendError(res, "Authentication required", 401);
-    }
-
-    if (req.user.role !== "provider") {
-      return sendError(res, "Provider access required", 403);
-    }
-
-    // Fetch provider details
-    const { data: provider, error } = await supabase
-      .from("service_providers")
-      .select("*")
-      .eq("user_id", req.user.id)
-      .single();
-
-    if (error || !provider) {
-      return sendError(res, "Provider profile not found", 404);
-    }
-
-    // Attach provider to request object
-    req.provider = provider;
-    next();
-  } catch (error) {
-    console.error("Provider middleware error:", error);
-    sendError(res, "Authorization failed", 500, error.message);
-  }
-};
-
-/**
- * Optional authentication - doesn't fail if no user
- */
-const optionalAuth = async (req, res, next) => {
-  try {
-    const userId = req.headers["x-user-id"];
-
-    if (userId) {
-      const { data: user } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
+      // Verify user exists in database
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('id, email, name, role, avatar_url')
+        .eq('id', decoded.id)
         .single();
 
-      if (user) {
-        req.user = user;
+      if (error || !user) {
+        return ApiResponse.unauthorized(res, 'User not found');
       }
+
+      // Set user session in Supabase for RLS
+      await AuthUtils.setSupabaseSession(supabase, user.id);
+
+      // Attach user to request
+      req.user = user;
+      req.userId = user.id;
+      next();
+    } catch (error) {
+      console.error('Auth middleware error:', error);
+      return ApiResponse.error(res, 'Authentication failed');
     }
-
-    next();
-  } catch (error) {
-    // Continue without user
-    next();
   }
-};
 
-module.exports = {
-  authenticate,
-  requireProvider,
-  optionalAuth,
-};
+  // Role-based authorization
+  static authorize(...roles) {
+    return (req, res, next) => {
+      if (!req.user) {
+        return ApiResponse.unauthorized(res, 'Authentication required');
+      }
+
+      if (!roles.includes(req.user.role)) {
+        return ApiResponse.forbidden(res, 'Insufficient permissions');
+      }
+
+      next();
+    };
+  }
+
+  // Optional authentication (sets user if token exists)
+  static async optionalAuth(req, res, next) {
+    try {
+      const authHeader = req.headers.authorization;
+      
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        const decoded = AuthUtils.verifyToken(token);
+
+        if (decoded) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('id, email, name, role, avatar_url')
+            .eq('id', decoded.id)
+            .single();
+
+          if (user) {
+            await AuthUtils.setSupabaseSession(supabase, user.id);
+            req.user = user;
+            req.userId = user.id;
+          }
+        }
+      }
+      next();
+    } catch (error) {
+      // Continue without auth on error
+      next();
+    }
+  }
+}
+
+module.exports = AuthMiddleware;

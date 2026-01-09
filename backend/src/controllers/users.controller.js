@@ -1,269 +1,231 @@
-// backend/src/controllers/users.controller.js
-const { supabase } = require("../config/supabase");
-const { sendSuccess, sendError } = require("../utils/response");
+// controllers/users.controller.js
+const supabase = require('../config/supabase');
+const AuthUtils = require('../utils/auth');
+const ApiResponse = require('../utils/response');
+const { v4: uuidv4 } = require('uuid');
 
-/**
- * Sync user from NextAuth to Supabase
- * POST /api/auth/sync-user
- */
-const syncUser = async (req, res) => {
-  try {
-    const { id, name, email, image } = req.body;
+class UserController {
+  // User registration
+  static async register(req, res) {
+    try {
+      const { name, email, password, phone } = req.body;
 
-    if (!id) {
-      return sendError(res, "User ID is required", 400);
-    }
+      // Validation
+      if (!email || !password) {
+        return ApiResponse.validationError(res, {
+          email: 'Email is required',
+          password: 'Password is required'
+        });
+      }
 
-    // Upsert user into database
-    const { data, error } = await supabase
-      .from("users")
-      .upsert(
-        {
-          id,
-          name: name || null,
-          email: email || null,
-          avatar_url: image || null,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "id",
-        }
-      )
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Sync user error:", error);
-      return sendError(res, "Failed to sync user", 500, error.message);
-    }
-
-    sendSuccess(res, data, "User synced successfully!");
-  } catch (error) {
-    console.error("Sync user error:", error);
-    sendError(res, "Failed to sync user", 500, error.message);
-  }
-};
-
-/**
- * Get current user profile
- * GET /api/auth/profile
- */
-const getProfile = async (req, res) => {
-  try {
-    const user = req.user;
-
-    // If user is a provider, fetch provider details too
-    let providerDetails = null;
-    if (user.role === "provider") {
-      const { data } = await supabase
-        .from("service_providers")
-        .select("*")
-        .eq("user_id", user.id)
+      // Check if user already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
         .single();
-      providerDetails = data;
-    }
 
-    sendSuccess(
-      res,
-      {
-        ...user,
-        provider: providerDetails,
-      },
-      "Profile fetched successfully!"
-    );
-  } catch (error) {
-    console.error("Get profile error:", error);
-    sendError(res, "Failed to fetch profile", 500, error.message);
+      if (existingUser) {
+        return ApiResponse.error(res, 'Email already registered', 400);
+      }
+
+      // Hash password
+      const passwordHash = await AuthUtils.hashPassword(password);
+
+      // Create user with UUID
+      const userId = uuidv4();
+      const userData = {
+        id: userId,
+        name: name || null,
+        email,
+        phone: phone || null,
+        password_hash: passwordHash,
+        role: 'user'
+      };
+
+      // Insert user into database
+      const { data: user, error } = await supabase
+        .from('users')
+        .insert([userData])
+        .select('id, email, name, role, created_at')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      // Generate token
+      const token = AuthUtils.generateToken(user);
+
+      return ApiResponse.success(res, {
+        user,
+        token
+      }, 'Registration successful', 201);
+    } catch (error) {
+      console.error('Registration error:', error);
+      return ApiResponse.error(res, 'Registration failed');
+    }
   }
-};
 
-/**
- * Update current user profile
- * PUT /api/auth/profile
- */
-const updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { name, phone } = req.body;
+  // User login
+  static async login(req, res) {
+    try {
+      const { email, password } = req.body;
 
-    const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (phone !== undefined) updates.phone = phone;
-    updates.updated_at = new Date().toISOString();
+      if (!email || !password) {
+        return ApiResponse.validationError(res, {
+          email: 'Email is required',
+          password: 'Password is required'
+        });
+      }
 
-    const { data, error } = await supabase
-      .from("users")
-      .update(updates)
-      .eq("id", userId)
-      .select()
-      .single();
+      // Find user by email
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
 
-    if (error) {
-      return sendError(res, "Failed to update profile", 500, error.message);
+      if (error || !user) {
+        return ApiResponse.unauthorized(res, 'Invalid credentials');
+      }
+
+      // Verify password
+      const isValidPassword = await AuthUtils.verifyPassword(password, user.password_hash);
+      if (!isValidPassword) {
+        return ApiResponse.unauthorized(res, 'Invalid credentials');
+      }
+
+      // Generate token
+      const token = AuthUtils.generateToken(user);
+
+      // Set Supabase session for RLS
+      await AuthUtils.setSupabaseSession(supabase, user.id);
+
+      // Remove password_hash from response
+      const { password_hash, ...userWithoutPassword } = user;
+
+      return ApiResponse.success(res, {
+        user: userWithoutPassword,
+        token
+      }, 'Login successful');
+    } catch (error) {
+      console.error('Login error:', error);
+      return ApiResponse.error(res, 'Login failed');
     }
-
-    sendSuccess(res, data, "Profile updated successfully!");
-  } catch (error) {
-    console.error("Update profile error:", error);
-    sendError(res, "Failed to update profile", 500, error.message);
   }
-};
 
-/**
- * Register as a service provider
- * POST /api/auth/become-provider
- */
-const becomeProvider = async (req, res) => {
-  try {
-    const userId = req.user.id;
+  // Get current user profile
+  static async getProfile(req, res) {
+    try {
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('id, name, email, phone, avatar_url, role, created_at, updated_at')
+        .eq('id', req.userId)
+        .single();
 
-    // Check if already a provider
-    const { data: existingProvider } = await supabase
-      .from("service_providers")
-      .select("id")
-      .eq("user_id", userId)
-      .single();
+      if (error || !user) {
+        return ApiResponse.notFound(res, 'User not found');
+      }
 
-    if (existingProvider) {
-      return sendError(res, "Already registered as a provider", 400);
+      return ApiResponse.success(res, user, 'Profile retrieved successfully');
+    } catch (error) {
+      console.error('Get profile error:', error);
+      return ApiResponse.error(res, 'Failed to get profile');
     }
-
-    // Create provider profile
-    const { data: provider, error: providerError } = await supabase
-      .from("service_providers")
-      .insert({
-        user_id: userId,
-        is_verified: false,
-        rating: 0,
-        total_jobs: 0,
-        availability_status: "offline",
-      })
-      .select()
-      .single();
-
-    if (providerError) {
-      return sendError(
-        res,
-        "Failed to create provider profile",
-        500,
-        providerError.message
-      );
-    }
-
-    // Update user role
-    const { error: userError } = await supabase
-      .from("users")
-      .update({ role: "provider" })
-      .eq("id", userId);
-
-    if (userError) {
-      // Rollback provider creation
-      await supabase.from("service_providers").delete().eq("id", provider.id);
-      return sendError(
-        res,
-        "Failed to update user role",
-        500,
-        userError.message
-      );
-    }
-
-    sendSuccess(res, provider, "Successfully registered as a provider!", 201);
-  } catch (error) {
-    console.error("Become provider error:", error);
-    sendError(res, "Failed to register as provider", 500, error.message);
   }
-};
 
-/**
- * Update provider availability status
- * PATCH /api/auth/provider/availability
- */
-const updateAvailability = async (req, res) => {
-  try {
-    const providerId = req.provider.id;
-    const { availability_status } = req.body;
+  // Update user profile
+  static async updateProfile(req, res) {
+    try {
+      const { name, phone, avatar_url } = req.body;
+      const updateData = { updated_at: new Date().toISOString() };
 
-    const validStatuses = ["available", "busy", "offline"];
-    if (!validStatuses.includes(availability_status)) {
-      return sendError(
-        res,
-        "Invalid availability status. Use: available, busy, or offline",
-        400
-      );
+      // Only update fields that are provided
+      if (name !== undefined) updateData.name = name;
+      if (phone !== undefined) updateData.phone = phone;
+      if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+
+      const { data: user, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', req.userId)
+        .select('id, name, email, phone, avatar_url, role, created_at, updated_at')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return ApiResponse.success(res, user, 'Profile updated successfully');
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return ApiResponse.error(res, 'Failed to update profile');
     }
-
-    const { data, error } = await supabase
-      .from("service_providers")
-      .update({ availability_status })
-      .eq("id", providerId)
-      .select()
-      .single();
-
-    if (error) {
-      return sendError(
-        res,
-        "Failed to update availability",
-        500,
-        error.message
-      );
-    }
-
-    sendSuccess(res, data, "Availability updated successfully!");
-  } catch (error) {
-    console.error("Update availability error:", error);
-    sendError(res, "Failed to update availability", 500, error.message);
   }
-};
 
-/**
- * Get provider dashboard stats
- * GET /api/auth/provider/stats
- */
-const getProviderStats = async (req, res) => {
-  try {
-    const providerId = req.provider.id;
+  // Change password
+  static async changePassword(req, res) {
+    try {
+      const { currentPassword, newPassword } = req.body;
 
-    // Get booking counts by status
-    const { data: bookings, error: bookingsError } = await supabase
-      .from("bookings")
-      .select("status")
-      .eq("provider_id", providerId);
+      if (!currentPassword || !newPassword) {
+        return ApiResponse.validationError(res, {
+          currentPassword: 'Current password is required',
+          newPassword: 'New password is required'
+        });
+      }
 
-    if (bookingsError) {
-      return sendError(
-        res,
-        "Failed to fetch stats",
-        500,
-        bookingsError.message
-      );
+      // Get current user with password
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('password_hash')
+        .eq('id', req.userId)
+        .single();
+
+      if (error || !user) {
+        return ApiResponse.unauthorized(res, 'User not found');
+      }
+
+      // Verify current password
+      const isValid = await AuthUtils.verifyPassword(currentPassword, user.password_hash);
+      if (!isValid) {
+        return ApiResponse.unauthorized(res, 'Current password is incorrect');
+      }
+
+      // Hash new password
+      const newPasswordHash = await AuthUtils.hashPassword(newPassword);
+
+      // Update password
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          password_hash: newPasswordHash,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', req.userId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return ApiResponse.success(res, null, 'Password changed successfully');
+    } catch (error) {
+      console.error('Change password error:', error);
+      return ApiResponse.error(res, 'Failed to change password');
     }
-
-    // Calculate stats
-    const stats = {
-      total_bookings: bookings.length,
-      pending: bookings.filter((b) => b.status === "pending").length,
-      accepted: bookings.filter((b) => b.status === "accepted").length,
-      in_progress: bookings.filter((b) => b.status === "in_progress").length,
-      completed: bookings.filter((b) => b.status === "completed").length,
-      cancelled: bookings.filter((b) => b.status === "cancelled").length,
-      rating: req.provider.rating,
-      total_jobs: req.provider.total_jobs,
-      is_verified: req.provider.is_verified,
-      availability_status: req.provider.availability_status,
-    };
-
-    sendSuccess(res, stats, "Provider stats fetched successfully!");
-  } catch (error) {
-    console.error("Get provider stats error:", error);
-    sendError(res, "Failed to fetch stats", 500, error.message);
   }
-};
 
-module.exports = {
-  syncUser,
-  getProfile,
-  updateProfile,
-  becomeProvider,
-  updateAvailability,
-  getProviderStats,
-};
+  // Logout
+  static async logout(req, res) {
+    try {
+      await AuthUtils.clearSupabaseSession(supabase);
+      return ApiResponse.success(res, null, 'Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      return ApiResponse.error(res, 'Logout failed');
+    }
+  }
+}
+
+module.exports = UserController;

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE,
   phone TEXT,
   avatar_url TEXT,
+  password_hash TEXT NOT NULL,
   role TEXT DEFAULT 'user' CHECK (role IN ('user', 'provider', 'admin')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -68,6 +69,16 @@ CREATE TABLE IF NOT EXISTS booking_tracking (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 6. Password reset tokens table
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  used BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ===========================================
 -- SmartMatch Supabase Database Functions
 -- ===========================================
@@ -110,6 +121,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Function to set current user ID in session
+CREATE OR REPLACE FUNCTION set_current_user_id(user_id TEXT)
+RETURNS void AS $$
+BEGIN
+  PERFORM set_config('app.current_user_id', user_id, false);
+END;
+$$ LANGUAGE plpgsql;
+
 -- ===========================================
 -- Row Level Security (RLS) Policies
 -- ===========================================
@@ -120,43 +139,72 @@ ALTER TABLE service_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE booking_tracking ENABLE ROW LEVEL SECURITY;
+ALTER TABLE password_reset_tokens ENABLE ROW LEVEL SECURITY;
 
 -- Users policies
+-- Remove conflicting policies first (if they exist)
+DROP POLICY IF EXISTS "Users can view their own profile" ON users;
+DROP POLICY IF EXISTS "Users can update their own profile" ON users;
+
+-- New custom auth policies
+CREATE POLICY "Anyone can register" ON users
+  FOR INSERT WITH CHECK (true);
+
 CREATE POLICY "Users can view their own profile" ON users
-  FOR SELECT USING (auth.uid() = id);
-
+  FOR SELECT USING (id = current_setting('app.current_user_id', true));
+  
 CREATE POLICY "Users can update their own profile" ON users
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING (id = current_setting('app.current_user_id', true));
 
--- Services policies (public read, owner write)
+-- Allow admin to view all users
+CREATE POLICY "Admins can view all users" ON users
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users u2 
+      WHERE u2.id = current_setting('app.current_user_id', true) 
+      AND u2.role = 'admin'
+    )
+  );
+
+-- Service Providers policies
+CREATE POLICY "Anyone can view service providers" ON service_providers
+  FOR SELECT USING (true);
+
+CREATE POLICY "Users can manage their own provider profile" ON service_providers
+  FOR ALL USING (user_id = current_setting('app.current_user_id', true));
+
+-- Services policies
 CREATE POLICY "Anyone can view active services" ON services
   FOR SELECT USING (is_active = true);
 
 CREATE POLICY "Providers can manage their own services" ON services
   FOR ALL USING (
     provider_id IN (
-      SELECT id FROM service_providers WHERE user_id = auth.uid()
+      SELECT id FROM service_providers 
+      WHERE user_id = current_setting('app.current_user_id', true)
     )
   );
 
 -- Bookings policies
 CREATE POLICY "Users can view their own bookings" ON bookings
-  FOR SELECT USING (user_id = auth.uid());
+  FOR SELECT USING (user_id = current_setting('app.current_user_id', true));
 
 CREATE POLICY "Providers can view bookings for their services" ON bookings
   FOR SELECT USING (
     provider_id IN (
-      SELECT id FROM service_providers WHERE user_id = auth.uid()
+      SELECT id FROM service_providers 
+      WHERE user_id = current_setting('app.current_user_id', true)
     )
   );
 
 CREATE POLICY "Users can create bookings" ON bookings
-  FOR INSERT WITH CHECK (user_id = auth.uid());
+  FOR INSERT WITH CHECK (user_id = current_setting('app.current_user_id', true));
 
 CREATE POLICY "Providers can update their booking status" ON bookings
   FOR UPDATE USING (
     provider_id IN (
-      SELECT id FROM service_providers WHERE user_id = auth.uid()
+      SELECT id FROM service_providers 
+      WHERE user_id = current_setting('app.current_user_id', true)
     )
   );
 
@@ -164,7 +212,8 @@ CREATE POLICY "Providers can update their booking status" ON bookings
 CREATE POLICY "Users can view tracking for their bookings" ON booking_tracking
   FOR SELECT USING (
     booking_id IN (
-      SELECT id FROM bookings WHERE user_id = auth.uid()
+      SELECT id FROM bookings 
+      WHERE user_id = current_setting('app.current_user_id', true)
     )
   );
 
@@ -173,10 +222,15 @@ CREATE POLICY "Providers can view tracking for their bookings" ON booking_tracki
     booking_id IN (
       SELECT id FROM bookings 
       WHERE provider_id IN (
-        SELECT id FROM service_providers WHERE user_id = auth.uid()
+        SELECT id FROM service_providers 
+        WHERE user_id = current_setting('app.current_user_id', true)
       )
     )
   );
+
+-- Password reset tokens policies (only admins can view)
+CREATE POLICY "Only system can manage reset tokens" ON password_reset_tokens
+  FOR ALL USING (false); -- You'll handle this in your app logic
 
 -- ===========================================
 -- Indexes for better performance
@@ -197,3 +251,9 @@ CREATE INDEX IF NOT EXISTS idx_booking_tracking_booking ON booking_tracking(book
 
 CREATE INDEX IF NOT EXISTS idx_service_providers_user ON service_providers(user_id);
 CREATE INDEX IF NOT EXISTS idx_service_providers_availability ON service_providers(availability_status);
+
+CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_reset_tokens_user ON password_reset_tokens(user_id);
+
+-- Index for email lookups during auth
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

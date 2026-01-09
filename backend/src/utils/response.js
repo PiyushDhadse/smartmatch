@@ -1,44 +1,36 @@
-/**
- * Standard API Response Utilities
- */
-
-const sendSuccess = (res, data, message = "Success", statusCode = 200) => {
-  return res.status(statusCode).json({
-    success: true,
-    message,
-    data,
-  });
-};
-
-const sendError = (
-  res,
-  message = "Something went wrong",
-  statusCode = 500,
-  errors = null
-) => {
-  const response = {
-    success: false,
-    message,
-  };
-
-  if (errors) {
-    response.errors = errors;
+// utils/response.js
+class ApiResponse {
+  static success(res, data, message = 'Success', statusCode = 200) {
+    return res.status(statusCode).json({
+      success: true,
+      message,
+      data,
+    });
   }
 
-  return res.status(statusCode).json(response);
-};
+  static error(res, message = 'Internal server error', statusCode = 500, errors = null) {
+    return res.status(statusCode).json({
+      success: false,
+      message,
+      errors,
+    });
+  }
 
-const sendPaginated = (res, data, pagination, message = "Success") => {
-  return res.status(200).json({
-    success: true,
-    message,
-    data,
-    pagination,
-  });
-};
+  static validationError(res, errors) {
+    return this.error(res, 'Validation failed', 400, errors);
+  }
 
-module.exports = {
-  sendSuccess,
-  sendError,
-  sendPaginated,
-};
+  static unauthorized(res, message = 'Unauthorized access') {
+    return this.error(res, message, 401);
+  }
+
+  static forbidden(res, message = 'Forbidden') {
+    return this.error(res, message, 403);
+  }
+
+  static notFound(res, message = 'Resource not found') {
+    return this.error(res, message, 404);
+  }
+}
+
+module.exports = ApiResponse;

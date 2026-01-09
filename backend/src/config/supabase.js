@@ -1,28 +1,24 @@
-const { createClient } = require("@supabase/supabase-js");
-require("dotenv").config();
+// config/supabase.js
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-const hasUrl = !!supabaseUrl;
-const hasServiceKey = !!supabaseServiceKey;
-
-if (!hasUrl || !hasServiceKey) {
-  console.error("Supabase env vars missing or empty:", {
-    hasUrl,
-    hasServiceKey,
-  });
-  throw new Error(
-    "Missing Supabase environment variables. Expected SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your .env file."
-  );
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase environment variables');
+  process.exit(1);
 }
 
-// Service role client for backend operations (bypasses RLS)
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false,
+    persistSession: false, // We'll handle sessions manually
   },
+  global: {
+    headers: {
+      'x-application-name': 'smartmatch-backend'
+    }
+  }
 });
 
-module.exports = { supabase };
+module.exports = supabase;
