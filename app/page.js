@@ -21,7 +21,7 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-white py-16 lg:py-24 border-b border-cream">
+      <section className="bg-white-50 py-16 lg:py-24 border-b border-cream">
         <div className="max-w-7xl mx-auto px-5">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
@@ -42,7 +42,7 @@ export default function HomePage() {
               </p>
               
               <div className="flex flex-wrap gap-4 mt-2">
-                <Link href="/services" className="bg-emerald-700 btn-primary px-7 py-3.5 text-base">
+                <Link href="/services" className="bg-emerald-700 hover:bg-emerald-700 btn-primary px-7 py-3.5 text-base">
                   Find Services
                 </Link>
                 <Link href="/register" className="hover:bg-emerald-700 btn-secondary px-7 py-3.5 text-base">
@@ -118,7 +118,7 @@ export default function HomePage() {
               <Link
                 href="/services"
                 key={index}
-                className="bg-white rounded-xl p-6 text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border border-transparent hover:border-sage"
+                className="bg-cream rounded-xl p-6 text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border border-transparent hover:border-sage"
               >
                 <span className="text-4xl block mb-3">{service.icon}</span>
                 <h3 className="text-base font-semibold text-slate mb-1">
@@ -132,7 +132,7 @@ export default function HomePage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 lg:py-24 bg-white">
+      <section className="bg-white-50 py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-5">
           <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold text-slate mb-3">
@@ -147,7 +147,7 @@ export default function HomePage() {
             {steps.map((step, index) => (
               <div 
                 key={index} 
-                className="text-center p-8 rounded-xl hover:bg-cream transition-all duration-300"
+                className="bg-white text-center p-8 rounded-xl hover:bg-emerald-700 transition-all duration-300"
               >
                 <span className="inline-block bg-cream text-forest text-sm font-bold px-4 py-2 rounded-full mb-4">
                   {step.number}
@@ -180,7 +180,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/services"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg font-medium text-base transition-all duration-300 bg-transparent text-white border-2 border-white hover:bg-white hover:text-forest"
+              className="bg-white inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg font-medium text-base transition-all duration-300 bg-transparent text-emerald-700 border-2 border-white hover:bg-cream hover:text-forest"
             >
               Browse Services
             </Link>
