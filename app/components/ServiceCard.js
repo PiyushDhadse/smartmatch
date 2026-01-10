@@ -80,12 +80,6 @@ const ServiceCard = ({ service }) => {
             Buy Now
           </button>
         </div>
-        <Link
-          href={`/booking?serviceId=${service.id}`}
-          className="block text-center bg-emerald-700 hover:bg-emerald-900 text-white py-2 rounded-xl font-medium transition"
-        >
-          Book Service
-        </Link>
       </div>
 
     </div>
