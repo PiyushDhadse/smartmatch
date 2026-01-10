@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -29,23 +31,21 @@ export default function LoginPage() {
       setIsLoading(true);
       setError("");
 
-      // TODO: Implement your custom authentication logic here
-      // Example: const response = await fetch('/api/auth/login', {...})
-      // For now, we'll simulate authentication
-      console.log("Login attempt with:", { email, password });
+      // Use the auth context login function
+      const result = await login({ email, password });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!result.success) {
+        throw new Error(result.error || "Login failed");
+      }
 
-      // TODO: Replace with actual authentication logic
-      // After successful authentication:
-      // 1. Save token to localStorage/cookies
-      // 2. Update auth state
-      // 3. Redirect to dashboard
-
-      router.push("/dashboard/user");
+      // Determine dashboard based on user role
+      const userRole = result.data.user.role;
+      const dashboardPath = userRole === 'provider' ? '/dashboard/provider' : '/dashboard/user';
+      
+      router.push(dashboardPath);
+      
     } catch (error) {
-      setError("Invalid email or password");
+      setError(error.message || "Invalid email or password");
       console.error("Login error:", error);
     } finally {
       setIsLoading(false);

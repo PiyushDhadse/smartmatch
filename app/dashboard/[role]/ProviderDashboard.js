@@ -4,11 +4,12 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import {
-  getProviderBookings,
-  updateBookingStatus,
-  getMyServices,
-} from "../../lib/api";
+import { api } from "../../lib/api";
+
+// Then use it as:
+// api.getProviderBookings()
+// api.updateBookingStatus()
+// api.getMyServices()
 
 export default function ProviderDashboard() {
   const { data: session } = useSession();

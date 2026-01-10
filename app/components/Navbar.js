@@ -7,12 +7,14 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/app/context/CartContext';
 import CartDrawer from './CartDrawer';
+import { useAuth } from "@/app/context/AuthContext"; // Import custom auth hook
 
 export default function Navbar() {
   const { cartItems, toggleCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { user, logout, isAuthenticated } = useAuth(); // Add custom auth
 
   const navLinks = [{ href: "/", label: "Home" }];
 
@@ -24,7 +26,6 @@ export default function Navbar() {
 
   // Close menus on route change
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMenuOpen(false);
   }, [pathname]);
 
@@ -32,6 +33,19 @@ export default function Navbar() {
     "inline-flex items-center justify-center rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition px-5 py-2.5";
   const btnSecondary =
     "inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white text-slate-800 font-semibold hover:bg-emerald-50 transition px-5 py-2.5";
+
+  // Determine which auth system to use
+  const isLoggedIn = isAuthenticated || session;
+  const currentUser = user || session?.user;
+
+  const handleLogout = async () => {
+    if (isAuthenticated) {
+      await logout(); // Custom auth logout
+    }
+    if (session) {
+      await signOut({ callbackUrl: "/" }); // NextAuth logout
+    }
+  };
 
   return (
     <nav className="bg-white border-b border-emerald-100 sticky top-0 z-50">
@@ -91,7 +105,7 @@ export default function Navbar() {
 
         {/* Auth Buttons - Desktop */}
         <div className="hidden md:flex items-center gap-3">
-          {!session ? (
+          {!isLoggedIn ? (
             <>
               <Link href="/login" className={`${btnSecondary} text-sm`}>
                 Login
@@ -102,12 +116,15 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/dashboard/user" className={`${btnPrimary} text-sm`}>
-                Dashboard
+              <Link 
+                href={currentUser?.role === 'provider' ? '/dashboard/provider' : '/dashboard/user'} 
+                className={`${btnPrimary} text-sm`}
+              >
+                {currentUser?.name || 'Dashboard'}
               </Link>
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={handleLogout}
                 className={`${btnSecondary} text-sm`}
               >
                 Logout
@@ -163,7 +180,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-emerald-50">
-            {!session ? (
+            {!isLoggedIn ? (
               <>
                 <Link
                   href="/login"
@@ -183,17 +200,17 @@ export default function Navbar() {
             ) : (
               <>
                 <Link
-                  href="/dashboard/user"
+                  href={currentUser?.role === 'provider' ? '/dashboard/provider' : '/dashboard/user'}
                   className={`${btnPrimary} w-full text-center`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Dashboard
+                  {currentUser?.name || 'Dashboard'}
                 </Link>
                 <button
                   type="button"
                   onClick={() => {
                     setIsMenuOpen(false);
-                    signOut({ callbackUrl: "/" });
+                    handleLogout();
                   }}
                   className={`${btnSecondary} w-full text-center`}
                 >

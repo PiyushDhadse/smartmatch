@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-const passwordRegex =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+import { useAuth } from '@/app/context/AuthContext';
 
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -18,7 +18,10 @@ const RegisterPage = () => {
     termsAccepted: false
   });
   
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const router = useRouter();
+  const { register } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -26,34 +29,61 @@ const RegisterPage = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
     if (!passwordRegex.test(formData.password)) {
-      alert("Password does not meet strength requirements.");
-    return;
+      setError("Password does not meet strength requirements.");
+      return;
     }
     
-    // Basic validation
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match");
+      setError("Passwords don't match");
       return;
     }
     
     if (!formData.termsAccepted) {
-      alert("Please accept the terms and conditions");
+      setError("Please accept the terms and conditions");
       return;
     }
-    
-    // In a real app, you would register the user here
-    console.log('Registration attempt with:', formData);
-    
-    // Redirect based on user type
-    if (formData.userType === 'customer') {
-      router.push('/dashboard/user');
-    } else {
-      router.push('/dashboard/provider');
+
+    try {
+      setLoading(true);
+      setError('');
+
+      // Prepare data for backend
+      const userData = {
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email,
+        password: formData.password,
+        phone: '', // Add phone field if needed
+        role: formData.userType === 'provider' ? 'provider' : 'user'
+      };
+
+      // Call register function from auth context
+      const result = await register(userData);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Registration failed');
+      }
+
+      // Redirect based on user role
+      const dashboardPath = formData.userType === 'provider' 
+        ? '/dashboard/provider' 
+        : '/dashboard/user';
+      
+      router.push(dashboardPath);
+      
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,6 +103,13 @@ const RegisterPage = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm text-center">{error}</p>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -88,6 +125,7 @@ const RegisterPage = () => {
                     required
                     value={formData.firstName}
                     onChange={handleChange}
+                    disabled={loading}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
@@ -106,6 +144,7 @@ const RegisterPage = () => {
                     required
                     value={formData.lastName}
                     onChange={handleChange}
+                    disabled={loading}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
@@ -126,43 +165,43 @@ const RegisterPage = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
+                  disabled={loading}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
             </div>
 
-            
-
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
-             <div className="mt-1">
-             <input
-               id="password"
-               name="password"
-               type="password"
-               placeholder="Strong Password"
-               required
-               value={formData.password}
-               onChange={handleChange}
-               className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm
-                 ${
-                   formData.password &&
-                  !passwordRegex.test(formData.password)
-                     ? "border-red-500 focus:ring-red-500 focus:border-red-500"
-                     : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                 }`}
-             />
-             </div>
-               {/* Validation Message */}
-               {formData.password &&
-                 !passwordRegex.test(formData.password) && (
-                   <p className="mt-1 text-xs text-red-600">
-                     Password must be at least 8 characters, include uppercase, lowercase,
-                     number, and special character.
-                   </p>
-                 )}
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="Strong Password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={loading}
+                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm
+                    ${
+                      formData.password &&
+                      !passwordRegex.test(formData.password)
+                        ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                        : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                    }`}
+                />
+              </div>
+              {/* Validation Message */}
+              {formData.password &&
+                !passwordRegex.test(formData.password) && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Password must be at least 8 characters, include uppercase, lowercase,
+                    number, and special character.
+                  </p>
+                )}
             </div>
             
             {formData.password && !passwordRegex.test(formData.password) && (
@@ -198,6 +237,7 @@ const RegisterPage = () => {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  disabled={loading}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
@@ -213,6 +253,7 @@ const RegisterPage = () => {
                   name="userType"
                   value={formData.userType}
                   onChange={handleChange}
+                  disabled={loading}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                   <option value="customer">Customer</option>
@@ -228,6 +269,7 @@ const RegisterPage = () => {
                 type="checkbox"
                 checked={formData.termsAccepted}
                 onChange={handleChange}
+                disabled={loading}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="termsAccepted" className="ml-2 block text-sm text-gray-900">
@@ -238,9 +280,20 @@ const RegisterPage = () => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-700 hover:bg-forest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-700 hover:bg-forest focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Account
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Creating account...
+                  </span>
+                ) : (
+                  'Create Account'
+                )}
               </button>
             </div>
           </form>
