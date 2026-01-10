@@ -1,64 +1,26 @@
-// Load environment variables FIRST before any other imports
-require("dotenv").config();
+// server.js
+const app = require('./app');  // This should work since both are in src
 
-const app = require("./app");
-
-// 🔹 Health check route (safe, non-intrusive)
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Backend is healthy",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
-});
-
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   SmartMatch API Server                                   ║
-║                                                           ║
-║   Status:  Running                                        ║
-║   Port:    ${PORT}                                           ║
-║   Mode:    ${
-    process.env.NODE_ENV || "development"
-  }                                ║
-║                                                           ║
-║   Health:  /health                                        ║
-║   API:     /api                                           ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
-  `);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📁 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
 });
 
 // Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM signal received: closing HTTP server");
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
   server.close(() => {
-    console.log("HTTP server closed");
-    process.exit(0);
+    console.log('💤 Process terminated');
   });
 });
 
-process.on("SIGINT", () => {
-  console.log("SIGINT signal received: closing HTTP server");
+process.on('SIGINT', () => {
+  console.log('SIGINT received. Shutting down gracefully...');
   server.close(() => {
-    console.log("HTTP server closed");
-    process.exit(0);
+    console.log('💤 Process terminated');
   });
-});
-
-// Unhandled rejections
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
-});
-
-// Uncaught exceptions
-process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
-  process.exit(1);
 });

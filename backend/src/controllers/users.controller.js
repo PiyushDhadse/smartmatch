@@ -1,8 +1,8 @@
 // controllers/users.controller.js
-const supabase = require('../config/supabase');
-const AuthUtils = require('../utils/auth');
-const ApiResponse = require('../utils/response');
-const { v4: uuidv4 } = require('uuid');
+const supabase = require("../config/supabase");
+const AuthUtils = require("../utils/auth");
+const ApiResponse = require("../utils/response");
+const { v4: uuidv4 } = require("uuid");
 
 class UserController {
   // User registration
@@ -13,20 +13,20 @@ class UserController {
       // Validation
       if (!email || !password) {
         return ApiResponse.validationError(res, {
-          email: 'Email is required',
-          password: 'Password is required'
+          email: "Email is required",
+          password: "Password is required",
         });
       }
 
       // Check if user already exists
       const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
+        .from("users")
+        .select("id")
+        .eq("email", email)
         .single();
 
       if (existingUser) {
-        return ApiResponse.error(res, 'Email already registered', 400);
+        return ApiResponse.error(res, "Email already registered", 400);
       }
 
       // Hash password
@@ -40,14 +40,14 @@ class UserController {
         email,
         phone: phone || null,
         password_hash: passwordHash,
-        role: 'user'
+        role: "user",
       };
 
       // Insert user into database
       const { data: user, error } = await supabase
-        .from('users')
+        .from("users")
         .insert([userData])
-        .select('id, email, name, role, created_at')
+        .select("id, email, name, role, created_at")
         .single();
 
       if (error) {
@@ -57,14 +57,24 @@ class UserController {
       // Generate token
       const token = AuthUtils.generateToken(user);
 
-      return ApiResponse.success(res, {
-        user,
-        token
-      }, 'Registration successful', 201);
+      return ApiResponse.success(
+        res,
+        {
+          user,
+          token,
+        },
+        "Registration successful",
+        201
+      );
     } catch (error) {
-      console.error('Registration error:', error);
-      return ApiResponse.error(res, 'Registration failed');
+      console.error("Registration error:", error);
+      console.error("Database error details:", error);
+      console.error("FULL REGISTRATION ERROR:", error);
+      console.error("Error code:", error.code);
+      console.error("Error details:", error.details);
+      return ApiResponse.error(res, "Registration failed");
     }
+    // In register function, after the error
   }
 
   // User login
@@ -74,26 +84,29 @@ class UserController {
 
       if (!email || !password) {
         return ApiResponse.validationError(res, {
-          email: 'Email is required',
-          password: 'Password is required'
+          email: "Email is required",
+          password: "Password is required",
         });
       }
 
       // Find user by email
       const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
+        .from("users")
+        .select("*")
+        .eq("email", email)
         .single();
 
       if (error || !user) {
-        return ApiResponse.unauthorized(res, 'Invalid credentials');
+        return ApiResponse.unauthorized(res, "Invalid credentials");
       }
 
       // Verify password
-      const isValidPassword = await AuthUtils.verifyPassword(password, user.password_hash);
+      const isValidPassword = await AuthUtils.verifyPassword(
+        password,
+        user.password_hash
+      );
       if (!isValidPassword) {
-        return ApiResponse.unauthorized(res, 'Invalid credentials');
+        return ApiResponse.unauthorized(res, "Invalid credentials");
       }
 
       // Generate token
@@ -105,13 +118,17 @@ class UserController {
       // Remove password_hash from response
       const { password_hash, ...userWithoutPassword } = user;
 
-      return ApiResponse.success(res, {
-        user: userWithoutPassword,
-        token
-      }, 'Login successful');
+      return ApiResponse.success(
+        res,
+        {
+          user: userWithoutPassword,
+          token,
+        },
+        "Login successful"
+      );
     } catch (error) {
-      console.error('Login error:', error);
-      return ApiResponse.error(res, 'Login failed');
+      console.error("Login error:", error);
+      return ApiResponse.error(res, "Login failed");
     }
   }
 
@@ -119,19 +136,21 @@ class UserController {
   static async getProfile(req, res) {
     try {
       const { data: user, error } = await supabase
-        .from('users')
-        .select('id, name, email, phone, avatar_url, role, created_at, updated_at')
-        .eq('id', req.userId)
+        .from("users")
+        .select(
+          "id, name, email, phone, avatar_url, role, created_at, updated_at"
+        )
+        .eq("id", req.userId)
         .single();
 
       if (error || !user) {
-        return ApiResponse.notFound(res, 'User not found');
+        return ApiResponse.notFound(res, "User not found");
       }
 
-      return ApiResponse.success(res, user, 'Profile retrieved successfully');
+      return ApiResponse.success(res, user, "Profile retrieved successfully");
     } catch (error) {
-      console.error('Get profile error:', error);
-      return ApiResponse.error(res, 'Failed to get profile');
+      console.error("Get profile error:", error);
+      return ApiResponse.error(res, "Failed to get profile");
     }
   }
 
@@ -147,20 +166,22 @@ class UserController {
       if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
 
       const { data: user, error } = await supabase
-        .from('users')
+        .from("users")
         .update(updateData)
-        .eq('id', req.userId)
-        .select('id, name, email, phone, avatar_url, role, created_at, updated_at')
+        .eq("id", req.userId)
+        .select(
+          "id, name, email, phone, avatar_url, role, created_at, updated_at"
+        )
         .single();
 
       if (error) {
         throw error;
       }
 
-      return ApiResponse.success(res, user, 'Profile updated successfully');
+      return ApiResponse.success(res, user, "Profile updated successfully");
     } catch (error) {
-      console.error('Update profile error:', error);
-      return ApiResponse.error(res, 'Failed to update profile');
+      console.error("Update profile error:", error);
+      return ApiResponse.error(res, "Failed to update profile");
     }
   }
 
@@ -171,26 +192,29 @@ class UserController {
 
       if (!currentPassword || !newPassword) {
         return ApiResponse.validationError(res, {
-          currentPassword: 'Current password is required',
-          newPassword: 'New password is required'
+          currentPassword: "Current password is required",
+          newPassword: "New password is required",
         });
       }
 
       // Get current user with password
       const { data: user, error } = await supabase
-        .from('users')
-        .select('password_hash')
-        .eq('id', req.userId)
+        .from("users")
+        .select("password_hash")
+        .eq("id", req.userId)
         .single();
 
       if (error || !user) {
-        return ApiResponse.unauthorized(res, 'User not found');
+        return ApiResponse.unauthorized(res, "User not found");
       }
 
       // Verify current password
-      const isValid = await AuthUtils.verifyPassword(currentPassword, user.password_hash);
+      const isValid = await AuthUtils.verifyPassword(
+        currentPassword,
+        user.password_hash
+      );
       if (!isValid) {
-        return ApiResponse.unauthorized(res, 'Current password is incorrect');
+        return ApiResponse.unauthorized(res, "Current password is incorrect");
       }
 
       // Hash new password
@@ -198,21 +222,21 @@ class UserController {
 
       // Update password
       const { error: updateError } = await supabase
-        .from('users')
+        .from("users")
         .update({
           password_hash: newPasswordHash,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', req.userId);
+        .eq("id", req.userId);
 
       if (updateError) {
         throw updateError;
       }
 
-      return ApiResponse.success(res, null, 'Password changed successfully');
+      return ApiResponse.success(res, null, "Password changed successfully");
     } catch (error) {
-      console.error('Change password error:', error);
-      return ApiResponse.error(res, 'Failed to change password');
+      console.error("Change password error:", error);
+      return ApiResponse.error(res, "Failed to change password");
     }
   }
 
@@ -220,10 +244,10 @@ class UserController {
   static async logout(req, res) {
     try {
       await AuthUtils.clearSupabaseSession(supabase);
-      return ApiResponse.success(res, null, 'Logged out successfully');
+      return ApiResponse.success(res, null, "Logged out successfully");
     } catch (error) {
-      console.error('Logout error:', error);
-      return ApiResponse.error(res, 'Logout failed');
+      console.error("Logout error:", error);
+      return ApiResponse.error(res, "Logout failed");
     }
   }
 }

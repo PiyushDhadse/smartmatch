@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import SessionProvider from "./context/SessionProvider";
 import { CartProvider } from './context/CartContext';
+import { AuthProvider } from './context/AuthContext';
 
 export const metadata = {
   title: "SmartMatch - Connect with Local Service Providers",
@@ -15,15 +16,18 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-cream text-slate">
-        <SessionProvider>
-          <CartProvider>
-            <Navbar />
-            {children}
-          </CartProvider>
-          <script src='https://www.noupe.com/embed/019b3379d0fb717cb2ab08c3dc55a4315c07.js'></script>
-          <main className="flex-1"></main>
-          <Footer />
-        </SessionProvider>
+        <AuthProvider>
+          <SessionProvider>
+            <CartProvider>
+              <Navbar />
+              <main className="flex-1">
+                {children}
+              </main>
+              <script src='https://www.noupe.com/embed/019b3379d0fb717cb2ab08c3dc55a4315c07.js'></script>
+              <Footer />
+            </CartProvider>
+          </SessionProvider>
+        </AuthProvider>
       </body>
     </html>
   );
