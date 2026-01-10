@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { ShoppingCart } from 'lucide-react';
+import { useCart } from '@/app/context/CartContext';
+import CartDrawer from './CartDrawer';
 
 export default function Navbar() {
+  const { cartItems, toggleCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -73,6 +77,17 @@ export default function Navbar() {
             </span>
           </Link>
         </div>
+        {/* Cart Icon */}
+        <div className="relative cursor-pointer" onClick={toggleCart}>
+          <ShoppingCart className="w-6 h-6 text-gray-700" />
+          {cartItems.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+              {cartItems.length}
+            </span>
+          )}
+        </div>
+
+        <CartDrawer />
 
         {/* Auth Buttons - Desktop */}
         <div className="hidden md:flex items-center gap-3">

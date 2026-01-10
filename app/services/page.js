@@ -253,13 +253,13 @@ export default function ServicesPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
                 href="/register"
-                className="btn-secondary inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white text-slate-800 font-semibold hover:bg-emerald-50 transition px-5 py-2.5"
+                className="btn-primary inline-flex items-center justify-center rounded-xl border border-emerald-200 text-slate-800 font-semibold hover:bg-emerald-700 transition px-5 py-2.5"
               >
                 Become a Provider
               </Link>
               <Link
                 href="/booking"
-                className="btn-primary inline-flex items-center justify-center rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition px-5 py-2.5"
+                className="btn-primary inline-flex items-center justify-center rounded-xl bg-forest text-white font-semibold hover:bg-emerald-700 transition px-5 py-2.5"
               >
                 Book now
               </Link>
@@ -418,7 +418,7 @@ export default function ServicesPage() {
                 setSearchTerm('');
                 setSelectedCategory('all');
               }}
-              className="btn-secondary inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white text-slate-800 font-semibold hover:bg-emerald-50 transition px-4 py-2.5 text-sm"
+              className="btn-secondary inline-flex items-center justify-center rounded-xl border border-emerald-200 text-slate-800 font-semibold hover:bg-emerald-700 transition px-4 py-2.5 text-sm"
             >
               Clear filters
             </button>
@@ -474,7 +474,7 @@ export default function ServicesPage() {
               </Link>
               <Link
                 href="/services/electrical"
-                className="inline-flex items-center justify-center rounded-xl border border-white/40 text-white font-bold px-5 py-3 hover:bg-white/10 transition"
+                className="bg-white inline-flex items-center justify-center rounded-xl border border-white/40 text-emerald-700 font-bold px-5 py-3 hover:bg-cream transition"
               >
                 Explore Electrical →
               </Link>

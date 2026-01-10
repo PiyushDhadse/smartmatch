@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +30,10 @@ const RegisterPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!passwordRegex.test(formData.password)) {
+      alert("Password does not meet strength requirements.");
+    return;
+    }
     
     // Basic validation
     if (formData.password !== formData.confirmPassword) {
@@ -51,7 +58,7 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-center py-8 px-6">
+    <div className="min-h-screen bg-white-50 flex flex-col justify-center py-8 px-6">
       <div className="max-w-xl mx-auto w-full">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Create your account
@@ -77,6 +84,7 @@ const RegisterPage = () => {
                     id="firstName"
                     name="firstName"
                     type="text"
+                    placeholder="Luke"
                     required
                     value={formData.firstName}
                     onChange={handleChange}
@@ -94,6 +102,7 @@ const RegisterPage = () => {
                     id="lastName"
                     name="lastName"
                     type="text"
+                    placeholder="Skywalker"
                     required
                     value={formData.lastName}
                     onChange={handleChange}
@@ -113,6 +122,7 @@ const RegisterPage = () => {
                   name="email"
                   type="email"
                   autoComplete="email"
+                  placeholder="you@example.com"
                   required
                   value={formData.email}
                   onChange={handleChange}
@@ -121,22 +131,59 @@ const RegisterPage = () => {
               </div>
             </div>
 
+            
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
+             <div className="mt-1">
+             <input
+               id="password"
+               name="password"
+               type="password"
+               placeholder="Strong Password"
+               required
+               value={formData.password}
+               onChange={handleChange}
+               className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm
+                 ${
+                   formData.password &&
+                  !passwordRegex.test(formData.password)
+                     ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                     : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                 }`}
+             />
+             </div>
+               {/* Validation Message */}
+               {formData.password &&
+                 !passwordRegex.test(formData.password) && (
+                   <p className="mt-1 text-xs text-red-600">
+                     Password must be at least 8 characters, include uppercase, lowercase,
+                     number, and special character.
+                   </p>
+                 )}
             </div>
+            
+            {formData.password && !passwordRegex.test(formData.password) && (
+              <div className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
+                <span className={/[A-Z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                  ✔ Uppercase
+                </span>
+                <span className={/[a-z]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                  ✔ Lowercase
+                </span>
+                <span className={/\d/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                  ✔ Number
+                </span>
+                <span className={/[@$!%*?&]/.test(formData.password) ? "text-green-600" : "text-gray-500"}>
+                  ✔ Special char
+                </span>
+                <span className={formData.password.length >= 8 ? "text-green-600" : "text-gray-500"}>
+                  ✔ 8+ chars
+                </span>
+              </div>
+            )}
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
@@ -147,6 +194,7 @@ const RegisterPage = () => {
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
+                  placeholder="Retype Password"
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}

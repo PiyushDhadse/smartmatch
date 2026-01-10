@@ -2,8 +2,19 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
+import { useCart } from '../context/CartContext';
 
 const ServiceCard = ({ service }) => {
+  const router = useRouter();
+  const addToCart = useCart();
+  const cartService = {
+    id: service.id,
+    name: service.title,        // or service.name
+    price: service.price,
+    route: `/booking/${service.id}`,
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition duration-300 border p-5 flex flex-col justify-between">
       
@@ -44,12 +55,39 @@ const ServiceCard = ({ service }) => {
       </div>
 
       {/* Action */}
-      <Link
-        href={`/booking?serviceId=${service.id}`}
-        className="mt-5 text-center bg-emerald-700 hover:bg-emerald-900 text-white py-2 rounded-xl font-medium transition"
-      >
-        Book Service
-      </Link>
+      <div className="mt-5 space-y-3">
+        
+        {/* Add to Cart + Buy Now (STEP D GOES HERE) */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              addToCart(cartService);
+              toggleCart();
+            }}
+            className="flex-1 border border-emerald-700 text-emerald-700 py-2 rounded-xl font-medium hover:bg-emerald-50 transition"
+          >
+            Add to Cart
+          </button>
+      
+          <button
+            onClick={() => {
+              clearCart();
+              addToCart(cartService);
+              router.push('/booking/checkout');
+            }}
+            className="flex-1 bg-emerald-700 hover:bg-emerald-900 text-white py-2 rounded-xl font-medium transition"
+          >
+            Buy Now
+          </button>
+        </div>
+        <Link
+          href={`/booking?serviceId=${service.id}`}
+          className="block text-center bg-emerald-700 hover:bg-emerald-900 text-white py-2 rounded-xl font-medium transition"
+        >
+          Book Service
+        </Link>
+      </div>
+
     </div>
   );
 };
