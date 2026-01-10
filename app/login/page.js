@@ -53,16 +53,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-160px)] flex items-center justify-center py-12 px-5">
+    <div className="min-h-[calc(100vh-160px)] bg-white flex items-center justify-center py-12 px-5">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <span className="text-4xl">
-              <img className="h-10" src="./favicon.ico" alt="" />
-            </span>
-            <span className="text-2xl font-bold text-slate">SmartMatch</span>
-          </Link>
           <h1 className="text-3xl font-bold text-slate mb-2">Welcome Back</h1>
           <p className="text-sage">Sign in to continue to your dashboard</p>
         </div>
@@ -121,7 +115,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 bg-slate text-white py-4 px-6 rounded-xl font-medium text-base transition-all duration-300 hover:bg-forest hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mb-6"
+              className="w-full flex items-center justify-center gap-3 bg-emerald-700 text-white py-4 px-6 rounded-xl font-medium text-base transition-all duration-300 hover:bg-forest hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mb-6"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
