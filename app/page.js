@@ -21,7 +21,7 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-white-50 py-16 lg:py-24 border-b border-cream">
+      <section className="bg-white py-16 lg:py-24 border-b border-cream">
         <div className="max-w-7xl mx-auto px-5">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
@@ -118,7 +118,7 @@ export default function HomePage() {
               <Link
                 href="/services"
                 key={index}
-                className="bg-cream rounded-xl p-6 text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border border-transparent hover:border-sage"
+                className="bg-white rounded-xl p-6 text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border border-transparent hover:border-sage"
               >
                 <span className="text-4xl block mb-3">{service.icon}</span>
                 <h3 className="text-base font-semibold text-slate mb-1">
@@ -132,7 +132,7 @@ export default function HomePage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="bg-white-50 py-16 lg:py-24">
+      <section className="bg-white py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-5">
           <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold text-slate mb-3">
@@ -143,11 +143,11 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white-50 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {steps.map((step, index) => (
               <div 
                 key={index} 
-                className="bg-white text-center p-8 rounded-xl hover:bg-emerald-700 transition-all duration-300"
+                className="bg-cream text-center p-8 rounded-xl hover:bg-emerald-700 transition-all duration-300"
               >
                 <span className="inline-block bg-cream text-forest text-sm font-bold px-4 py-2 rounded-full mb-4">
                   {step.number}

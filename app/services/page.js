@@ -229,7 +229,7 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <section className="border-b border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+      <section className="border-b border-emerald-100 bg-white">
         <div className="max-w-7xl mx-auto px-5 py-10">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>

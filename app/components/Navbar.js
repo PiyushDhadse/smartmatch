@@ -48,7 +48,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white border-b border-emerald-100 sticky top-0 z-50">
+    <nav className="bg-gradient-to-br from-emerald-50 via-white to-amber-50 border-b border-emerald-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
