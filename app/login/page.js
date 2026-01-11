@@ -1,4 +1,4 @@
-// app/login/page.js
+// app/login/page.js - UPDATED VERSION
 "use client";
 
 import Link from "next/link";
@@ -31,27 +31,44 @@ export default function LoginPage() {
       setIsLoading(true);
       setError("");
 
+      console.log("DEBUG - Login attempt with:", { email, password });
+
       // Use the auth context login function
       const result = await login({ email, password });
 
+      console.log("DEBUG - Login result:", result);
+
       if (!result.success) {
-        throw new Error(result.error || "Login failed");
+        throw new Error(result.error || result.message || "Login failed");
       }
 
-      // Determine dashboard based on user role
-      const userRole = result.data.user.role;
-      const dashboardPath = userRole === 'provider' ? '/dashboard/provider' : '/dashboard/user';
+      // Determine dashboard based on user type
+      // Check both possible field names: userType and role
+      const userData = result.data?.user || result.data;
+      const userType = userData.userType || userData.role || userData.user_type;
       
+      console.log("DEBUG - User data:", userData);
+      console.log("DEBUG - User type:", userType);
+      
+      let dashboardPath = '/dashboard';
+      if (userType === 'serviceProvider' || userType === 'provider') {
+        dashboardPath = '/dashboard/provider';
+      } else if (userType === 'customer') {
+        dashboardPath = '/dashboard';
+      }
+      
+      console.log("DEBUG - Redirecting to:", dashboardPath);
       router.push(dashboardPath);
       
     } catch (error) {
+      console.error("DEBUG - Login catch error:", error);
       setError(error.message || "Invalid email or password");
-      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ... rest of the JSX remains the same ...
   return (
     <div className="min-h-[calc(100vh-160px)] bg-white-50 flex items-center justify-center py-12 px-5">
       <div className="w-full max-w-md">
