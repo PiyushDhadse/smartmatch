@@ -2,92 +2,59 @@
 const supabase = require("../config/supabase");
 const AuthUtils = require("../utils/auth");
 const ApiResponse = require("../utils/response");
+const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
 
 class UserController {
   // User registration
-  static async register(req, res) {
+  // CORRECT registration hashing
+  static register = async (req, res) => {
     try {
-      const { name, email, password, phone } = req.body;
+      const { name, email, password, userType, services, agreeToTerms } =
+        req.body;
 
-      // Validation
-      if (!email || !password) {
-        return ApiResponse.validationError(res, {
-          email: "Email is required",
-          password: "Password is required",
-        });
-      }
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Check if user already exists
-      const { data: existingUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", email)
-        .single();
-
-      if (existingUser) {
-        return ApiResponse.error(res, "Email already registered", 400);
-      }
-
-      // Hash password
-      const passwordHash = await AuthUtils.hashPassword(password);
-
-      // Create user with UUID
-      const userId = uuidv4();
       const userData = {
-        id: userId,
-        name: name || null,
+        name,
         email,
-        phone: phone || null,
-        password_hash: passwordHash,
-        role: "user",
+        password: hashedPassword, // ← Use 'password' column (not password_hash)
+        user_type: userType,
+        agree_to_terms: agreeToTerms,
       };
 
-      // Insert user into database
+      if (userType === "serviceProvider" && services) {
+        userData.services = services;
+      }
+
       const { data: user, error } = await supabase
         .from("users")
         .insert([userData])
-        .select("id, email, name, role, created_at")
-        .single();
+        .select();
 
-      if (error) {
-        throw error;
-      }
-
-      // Generate token
-      const token = AuthUtils.generateToken(user);
-
+      // Add success response
       return ApiResponse.success(
         res,
         {
-          user,
-          token,
+          user: {
+            id: user[0].id,
+            name: user[0].name,
+            email: user[0].email,
+            userType: user[0].user_type,
+          },
         },
-        "Registration successful",
-        201
+        "Registration successful"
       );
     } catch (error) {
-      console.error("Registration error:", error);
-      console.error("Database error details:", error);
-      console.error("FULL REGISTRATION ERROR:", error);
-      console.error("Error code:", error.code);
-      console.error("Error details:", error.details);
+      console.error("Register error:", error);
       return ApiResponse.error(res, "Registration failed");
     }
-    // In register function, after the error
-  }
+  };
 
   // User login
   static async login(req, res) {
     try {
       const { email, password } = req.body;
-
-      if (!email || !password) {
-        return ApiResponse.validationError(res, {
-          email: "Email is required",
-          password: "Password is required",
-        });
-      }
 
       // Find user by email
       const { data: user, error } = await supabase
@@ -100,23 +67,20 @@ class UserController {
         return ApiResponse.unauthorized(res, "Invalid credentials");
       }
 
-      // Verify password
-      const isValidPassword = await AuthUtils.verifyPassword(
-        password,
-        user.password_hash
-      );
+      // Verify password - use user.password (not user.password_hash)
+      const isValidPassword = await bcrypt.compare(password, user.password);
+
       if (!isValidPassword) {
         return ApiResponse.unauthorized(res, "Invalid credentials");
       }
 
-      // Generate token
-      const token = AuthUtils.generateToken(user);
+      // Generate token (if you have AuthUtils)
+      const token = AuthUtils.generateToken
+        ? AuthUtils.generateToken(user)
+        : null;
 
-      // Set Supabase session for RLS
-      await AuthUtils.setSupabaseSession(supabase, user.id);
-
-      // Remove password_hash from response
-      const { password_hash, ...userWithoutPassword } = user;
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
 
       return ApiResponse.success(
         res,
@@ -138,13 +102,23 @@ class UserController {
       const { data: user, error } = await supabase
         .from("users")
         .select(
-          "id, name, email, phone, avatar_url, role, created_at, updated_at"
+          "id, name, email, phone, user_type, role, created_at, updated_at"
         )
         .eq("id", req.userId)
         .single();
 
       if (error || !user) {
         return ApiResponse.notFound(res, "User not found");
+      }
+
+      // If provider, get services
+      if (user.user_type === "provider") {
+        const { data: services } = await supabase
+          .from("provider_services")
+          .select("service_name")
+          .eq("user_id", user.id);
+
+        user.services = services?.map((s) => s.service_name) || [];
       }
 
       return ApiResponse.success(res, user, "Profile retrieved successfully");
