@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signIn, signOut } from "next-auth/react";
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/app/context/CartContext';
 import CartDrawer from './CartDrawer';
@@ -13,7 +12,6 @@ export default function Navbar() {
   const { cartItems, toggleCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session } = useSession();
   const { user, logout, isAuthenticated } = useAuth(); // Add custom auth
 
   const navLinks = [{ href: "/", label: "Home" }];
@@ -35,15 +33,12 @@ export default function Navbar() {
     "inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white text-slate-800 font-semibold hover:bg-emerald-50 transition px-5 py-2.5";
 
   // Determine which auth system to use
-  const isLoggedIn = isAuthenticated || session;
-  const currentUser = user || session?.user;
+  const isLoggedIn = isAuthenticated;
+  const currentUser = user;
 
   const handleLogout = async () => {
     if (isAuthenticated) {
       await logout(); // Custom auth logout
-    }
-    if (session) {
-      await signOut({ callbackUrl: "/" }); // NextAuth logout
     }
   };
 

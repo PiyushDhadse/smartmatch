@@ -2,7 +2,6 @@
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import SessionProvider from "./context/SessionProvider";
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 
@@ -17,7 +16,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-cream text-slate">
         <AuthProvider>
-          <SessionProvider>
+          
             <CartProvider>
               <Navbar />
               <main className="flex-1">
@@ -26,7 +25,7 @@ export default function RootLayout({ children }) {
               <script src='https://www.noupe.com/embed/019b3379d0fb717cb2ab08c3dc55a4315c07.js'></script>
               <Footer />
             </CartProvider>
-          </SessionProvider>
+          
         </AuthProvider>
       </body>
     </html>

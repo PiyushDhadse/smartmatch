@@ -1,459 +1,473 @@
-// app/dashboard/[role]/ProviderDashboard.js
+// app/dashboard/[role]/ProviderDashboard.js - REDESIGNED
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
+import { api } from "@/app/lib/api";
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
-import { api } from "../../lib/api";
-
-// Then use it as:
-// api.getProviderBookings()
-// api.updateBookingStatus()
-// api.getMyServices()
 
 export default function ProviderDashboard() {
-  const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState("requests");
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [activeTab, setActiveTab] = useState("pending");
   const [bookings, setBookings] = useState([]);
   const [services, setServices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [stats, setStats] = useState({
+    totalJobs: 0,
+    pending: 0,
+    completed: 0,
+    earnings: 0,
+  });
 
-  // Provider data from session and API
-  const provider = {
-    name: session?.user?.name || "Provider",
-    email: session?.user?.email || "provider@example.com",
-    service: services.length > 0 ? services[0].title : "General Service",
-    icon:
-      services.length > 0 && services[0].category
-        ? services[0].category.icon
-        : "🔧",
-    joinedDate: "December 2024",
-    rating: 4.9,
-    totalReviews: 47,
-    smartScore: 92,
-  };
-
-  const fetchData = useCallback(async () => {
-    if (!session?.user?.id) return;
-    setIsLoading(true);
-    try {
-      const [bookingsRes, servicesRes] = await Promise.all([
-        getProviderBookings(session.user.id),
-        getMyServices(session.user.id),
-      ]);
-      setBookings(bookingsRes.data || []);
-      setServices(servicesRes.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session]);
+  const router = useRouter();
+  const { logout } = useAuth();
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchData();
-    } else if (session === null) {
-      setIsLoading(false);
-    }
-  }, [session, fetchData]);
+    loadDashboardData();
+  }, []);
 
-  const handleUpdateStatus = async (id, status) => {
+  const loadDashboardData = async () => {
     try {
-      await updateBookingStatus(session.user.id, id, status);
-      // Refresh bookings
-      fetchData();
+      setLoading(true);
+
+      // Get user profile
+      const profileRes = await api.getProfile();
+      setUser(profileRes);
+
+      // Get bookings
+      const bookingsRes = await api.getProviderBookings();
+      setBookings(bookingsRes || []);
+
+      // Get services
+      const servicesRes = await api.getMyServices();
+      setServices(servicesRes || []);
+
+      // Calculate stats
+      const completedBookings = (bookingsRes || []).filter(
+        (b) => b.status === "completed"
+      );
+      const earnings = completedBookings.reduce(
+        (sum, b) => sum + (b.quote_amount || 0),
+        0
+      );
+
+      setStats({
+        totalJobs: bookingsRes?.length || 0,
+        pending: (bookingsRes || []).filter((b) => b.status === "pending")
+          .length,
+        completed: completedBookings.length,
+        earnings: earnings,
+      });
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
+  const handleUpdateBookingStatus = async (bookingId, status) => {
+    try {
+      await api.updateBookingStatus(bookingId, status);
+      loadDashboardData(); // Refresh data
     } catch (error) {
       console.error("Failed to update status:", error);
-      alert("Failed to update status");
+      alert("Failed to update booking status");
     }
   };
 
-  const handleAccept = (id) => handleUpdateStatus(id, "accepted");
-  const handleStart = (id) => handleUpdateStatus(id, "in_progress");
-  const handleDecline = (id) => handleUpdateStatus(id, "cancelled");
-  const handleComplete = (id) => handleUpdateStatus(id, "completed");
+  const filteredBookings = bookings.filter((booking) => {
+    if (activeTab === "pending") return booking.status === "pending";
+    if (activeTab === "active")
+      return ["accepted", "in_progress"].includes(booking.status);
+    if (activeTab === "completed")
+      return ["completed", "cancelled"].includes(booking.status);
+    return true;
+  });
 
-  const calculateEarnings = () => {
-    return bookings
-      .filter((b) => b.status === "completed")
-      .reduce((total, b) => {
-        // Assuming price is available in b.services.price
-        const price = parseFloat(b.services?.price || 0);
-        return total + price;
-      }, 0);
+  const statusColors = {
+    pending: "bg-yellow-100 text-yellow-800",
+    accepted: "bg-blue-100 text-blue-800",
+    in_progress: "bg-purple-100 text-purple-800",
+    completed: "bg-green-100 text-green-800",
+    cancelled: "bg-red-100 text-red-800",
   };
 
-  const earnings = calculateEarnings();
-
-  const stats = [
-    {
-      label: "Total Jobs",
-      value: bookings.length.toString(),
-      icon: "📋",
-      trend: "Total",
-    },
-    {
-      label: "Completed",
-      value: bookings.filter((b) => b.status === "completed").length.toString(),
-      icon: "✅",
-      trend: "All time",
-    },
-    {
-      label: "Earnings",
-      value: `$${earnings.toLocaleString()}`,
-      icon: "💰",
-      trend: "Total earnings",
-    },
-    {
-      label: "Pending",
-      value: bookings.filter((b) => b.status === "pending").length.toString(),
-      icon: "⏳",
-      trend: "Respond soon",
-    },
-  ];
-
-  const getStatusBadge = (status) => {
-    const styles = {
-      accepted: "bg-blue-100 text-blue-600",
-      in_progress: "bg-purple-100 text-purple-600",
-      pending: "bg-yellow-100 text-yellow-600",
-      completed: "bg-green-100 text-green-600",
-      cancelled: "bg-red-100 text-red-600",
-    };
-    return styles[status] || styles.pending;
+  const urgencyColors = {
+    low: "bg-gray-100 text-gray-800",
+    normal: "bg-blue-100 text-blue-800",
+    high: "bg-orange-100 text-orange-800",
+    emergency: "bg-red-100 text-red-800",
   };
 
-  const getUrgencyBadge = (urgency) => {
-    const styles = {
-      low: "bg-gray-100 text-gray-600",
-      normal: "bg-blue-100 text-blue-600",
-      urgent: "bg-red-100 text-red-600",
-    };
-    return styles[urgency] || styles.normal;
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-[calc(100vh-160px)] bg-cream">
-      <div className="max-w-7xl mx-auto px-5 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate">
-              Provider Dashboard 🛠️
-            </h1>
-            <p className="text-sage mt-1">
-              Manage your services and booking requests
-            </p>
-          </div>
-
-          {/* Availability Toggle */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-cream">
-              <span className="text-sm font-medium text-slate">
-                Availability:
-              </span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Welcome back, {user?.name || "Provider"} 👋
+              </h1>
+              <p className="text-gray-600">Manage your services and bookings</p>
+            </div>
+            <div className="flex items-center space-x-4">
               <button
-                onClick={() => setIsAvailable(!isAvailable)}
-                className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
-                  isAvailable ? "bg-green-500" : "bg-gray-300"
-                }`}
+                onClick={() => router.push("/services/create")}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition"
               >
-                <span
-                  className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${
-                    isAvailable ? "left-8" : "left-1"
-                  }`}
-                />
+                + Add Service
               </button>
-              <span
-                className={`text-sm font-medium ${
-                  isAvailable ? "text-green-500" : "text-gray-400"
-                }`}
+              <button
+                onClick={handleLogout}
+                className="text-gray-600 hover:text-gray-900"
               >
-                {isAvailable ? "Online" : "Offline"}
-              </span>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl p-6 shadow">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <span className="text-2xl">📋</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Total Jobs</p>
+                <p className="text-2xl font-bold">{stats.totalJobs}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow">
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <span className="text-2xl">⏳</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Pending</p>
+                <p className="text-2xl font-bold">{stats.pending}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <span className="text-2xl">✅</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Completed</p>
+                <p className="text-2xl font-bold">{stats.completed}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow">
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <span className="text-2xl">💰</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Earnings</p>
+                <p className="text-2xl font-bold">
+                  ${stats.earnings.toLocaleString()}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl p-5 border border-cream"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-2xl">{stat.icon}</span>
-              </div>
-              <p className="text-2xl font-bold text-slate">{stat.value}</p>
-              <p className="text-sm text-sage">{stat.label}</p>
-              <p className="text-xs text-forest mt-1">{stat.trend}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Bookings Section */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Left Column - Bookings */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl border border-cream overflow-hidden">
+            <div className="bg-white rounded-xl shadow">
               {/* Tabs */}
-              <div className="flex border-b border-cream">
-                {["requests", "upcoming", "completed"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-4 text-sm font-medium transition-all ${
-                      activeTab === tab
-                        ? "text-forest border-b-2 border-forest bg-cream/50"
-                        : "text-sage hover:text-slate"
-                    }`}
-                  >
-                    {tab === "requests" && "New Requests"}
-                    {tab === "upcoming" && "Upcoming"}
-                    {tab === "completed" && "Completed"}
-                    {tab === "requests" && (
-                      <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                        {bookings.filter((b) => b.status === "pending").length}
-                      </span>
-                    )}
-                  </button>
-                ))}
+              <div className="border-b">
+                <nav className="flex">
+                  {[
+                    {
+                      key: "pending",
+                      label: "Pending Requests",
+                      count: stats.pending,
+                    },
+                    {
+                      key: "active",
+                      label: "Active Jobs",
+                      count: bookings.filter((b) =>
+                        ["accepted", "in_progress"].includes(b.status)
+                      ).length,
+                    },
+                    {
+                      key: "completed",
+                      label: "Completed",
+                      count: stats.completed,
+                    },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`px-6 py-4 font-medium text-sm border-b-2 transition ${
+                        activeTab === tab.key
+                          ? "border-emerald-600 text-emerald-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {tab.label}
+                      {tab.count > 0 && (
+                        <span className="ml-2 bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </nav>
               </div>
 
               {/* Bookings List */}
-              <div className="p-4">
-                {isLoading ? (
-                  <div className="text-center py-12 text-sage">
-                    Loading bookings...
+              <div className="p-6">
+                {filteredBookings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-4">📭</div>
+                    <p className="text-gray-500">
+                      No {activeTab} bookings found
+                    </p>
                   </div>
                 ) : (
-                  bookings
-                    .filter((booking) => {
-                      if (activeTab === "requests")
-                        return booking.status === "pending";
-                      if (activeTab === "upcoming")
-                        return ["accepted", "in_progress"].includes(
-                          booking.status
-                        );
-                      return (
-                        booking.status === "completed" ||
-                        booking.status === "cancelled"
-                      );
-                    })
-                    .map((booking) => (
+                  <div className="space-y-4">
+                    {filteredBookings.map((booking) => (
                       <div
                         key={booking.id}
-                        className="p-4 rounded-xl hover:bg-cream/50 transition-all mb-3 border border-cream"
+                        className="border rounded-lg p-4 hover:bg-gray-50 transition"
                       >
-                        {/* Top Row */}
-                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-3">
-                          <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 bg-forest rounded-full flex items-center justify-center text-white text-lg font-semibold">
-                              {booking.users?.name?.charAt(0) || "U"}
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {booking.service_type || "Service Request"}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {booking.description}
+                            </p>
+                            <div className="flex items-center space-x-4 mt-3">
+                              <span className="text-sm text-gray-500">
+                                📅{" "}
+                                {new Date(
+                                  booking.preferred_date
+                                ).toLocaleDateString()}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                🕐 {booking.preferred_time || "Flexible"}
+                              </span>
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  urgencyColors[booking.urgency] ||
+                                  urgencyColors.normal
+                                }`}
+                              >
+                                {booking.urgency || "Normal"}
+                              </span>
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-slate">
-                                {booking.users?.name || "Unknown User"}
-                              </h4>
-                              <p className="text-sm text-sage">
-                                {booking.services?.title}
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                statusColors[booking.status]
+                              }`}
+                            >
+                              {booking.status.replace("_", " ").toUpperCase()}
+                            </span>
+                            {booking.quote_amount && (
+                              <p className="text-lg font-bold text-gray-900 mt-2">
+                                ${booking.quote_amount}
                               </p>
-                              <div className="flex flex-wrap items-center gap-2 mt-1">
-                                <span className="text-xs text-sage">
-                                  📅 {booking.booking_date}
-                                </span>
-                                <span className="text-xs text-sage">
-                                  🕐 {booking.time_slot}
-                                </span>
-                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-sm text-gray-600">
+                                📍 {booking.address}, {booking.city}
+                              </p>
+                              {booking.customer_notes && (
+                                <p className="text-sm text-gray-500 mt-1">
+                                  📝 {booking.customer_notes}
+                                </p>
+                              )}
                             </div>
+                            {booking.status === "pending" && (
+                              <div className="space-x-2">
+                                <button
+                                  onClick={() =>
+                                    handleUpdateBookingStatus(
+                                      booking.id,
+                                      "accepted"
+                                    )
+                                  }
+                                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleUpdateBookingStatus(
+                                      booking.id,
+                                      "cancelled"
+                                    )
+                                  }
+                                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300"
+                                >
+                                  Decline
+                                </button>
+                              </div>
+                            )}
+                            {booking.status === "accepted" && (
+                              <button
+                                onClick={() =>
+                                  handleUpdateBookingStatus(
+                                    booking.id,
+                                    "in_progress"
+                                  )
+                                }
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+                              >
+                                Start Job
+                              </button>
+                            )}
+                            {booking.status === "in_progress" && (
+                              <button
+                                onClick={() =>
+                                  handleUpdateBookingStatus(
+                                    booking.id,
+                                    "completed"
+                                  )
+                                }
+                                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"
+                              >
+                                Mark Complete
+                              </button>
+                            )}
                           </div>
-
-                          <div className="flex items-center gap-2 ml-16 md:ml-0">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${getUrgencyBadge(
-                                booking.urgency || "normal"
-                              )}`}
-                            >
-                              {(booking.urgency || "normal")
-                                .charAt(0)
-                                .toUpperCase() +
-                                (booking.urgency || "normal").slice(1)}
-                            </span>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                                booking.status
-                              )}`}
-                            >
-                              {booking.status.charAt(0).toUpperCase() +
-                                booking.status.slice(1)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Address */}
-                        <div className="ml-16 mb-3">
-                          <p className="text-sm text-sage">
-                            📍 {booking.address}
-                          </p>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="ml-16 flex flex-wrap gap-2">
-                          {booking.status === "pending" && (
-                            <>
-                              <button
-                                onClick={() => handleAccept(booking.id)}
-                                className="px-4 py-2 bg-forest text-white text-sm font-medium rounded-lg hover:bg-slate transition-all"
-                              >
-                                ✓ Accept
-                              </button>
-                              <button
-                                onClick={() => handleDecline(booking.id)}
-                                className="px-4 py-2 bg-white text-red-500 text-sm font-medium rounded-lg border border-red-200 hover:bg-red-50 transition-all"
-                              >
-                                ✕ Decline
-                              </button>
-                            </>
-                          )}
-                          {booking.status === "accepted" && (
-                            <>
-                              <button
-                                onClick={() => handleStart(booking.id)}
-                                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-all"
-                              >
-                                ▶ Start Job
-                              </button>
-                              <button className="px-4 py-2 bg-white text-slate text-sm font-medium rounded-lg border border-cream hover:bg-cream transition-all">
-                                📞 Contact
-                              </button>
-                            </>
-                          )}
-                          {booking.status === "in_progress" && (
-                            <button
-                              onClick={() => handleComplete(booking.id)}
-                              className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-all"
-                            >
-                              ✓ Mark Complete
-                            </button>
-                          )}
-                          {booking.status === "completed" && (
-                            <span className="text-sm text-green-500 font-medium">
-                              ✓ Job completed successfully
-                            </span>
-                          )}
                         </div>
                       </div>
-                    ))
+                    ))}
+                  </div>
                 )}
-
-                {!isLoading &&
-                  bookings.filter((booking) => {
-                    if (activeTab === "requests")
-                      return booking.status === "pending";
-                    if (activeTab === "upcoming")
-                      return ["accepted", "in_progress"].includes(
-                        booking.status
-                      );
-                    return (
-                      booking.status === "completed" ||
-                      booking.status === "cancelled"
-                    );
-                  }).length === 0 && (
-                    <div className="text-center py-12">
-                      <span className="text-4xl block mb-3">📭</span>
-                      <p className="text-sage">No bookings found</p>
-                    </div>
-                  )}
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Right Column - Profile & Services */}
           <div className="space-y-6">
-            {/* Provider Profile Card */}
-            <div className="bg-white rounded-2xl p-6 border border-cream">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-forest rounded-full flex items-center justify-center text-3xl">
-                  {provider.icon}
+            {/* Profile Card */}
+            <div className="bg-white rounded-xl shadow p-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">👤</span>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-slate">{provider.name}</h4>
-                  <p className="text-sm text-sage">
-                    {provider.service} Services
+                  <h3 className="font-bold text-gray-900">{user?.name}</h3>
+                  <p className="text-gray-600">{user?.email}</p>
+                  <p className="text-sm text-emerald-600 font-medium mt-1">
+                    {user?.user_type === "serviceProvider"
+                      ? "Service Provider"
+                      : "Provider"}
                   </p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <span className="text-yellow-500">⭐</span>
-                    <span className="text-sm font-medium text-slate">
-                      {provider.rating}
-                    </span>
-                    <span className="text-xs text-sage">
-                      ({provider.totalReviews} reviews)
-                    </span>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500">Services Offered</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {user?.services && user.services.length > 0 ? (
+                      user.services.map((service, index) => (
+                        <span
+                          key={index}
+                          className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm"
+                        >
+                          {service}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm">
+                        No services added yet
+                      </p>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              {/* SmartMatch Score */}
-              <div className="bg-cream rounded-xl p-4 mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-slate">
-                    SmartMatch Score
-                  </span>
-                  <span className="text-lg font-bold text-forest">
-                    {provider.smartScore}/100
-                  </span>
+                <div className="pt-4 border-t">
+                  <Link
+                    href="/profile/edit"
+                    className="block w-full text-center bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition"
+                  >
+                    Edit Profile
+                  </Link>
                 </div>
-                <div className="h-2 bg-white rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-forest rounded-full transition-all duration-500"
-                    style={{ width: `${provider.smartScore}%` }}
-                  />
-                </div>
-                <p className="text-xs text-sage mt-2">
-                  Based on availability, ratings, and response time
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-cream">
-                <p className="text-xs text-sage">
-                  Provider since {provider.joinedDate}
-                </p>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-2xl p-6 border border-cream">
-              <h3 className="font-semibold text-slate mb-4">Quick Actions</h3>
-              <div className="space-y-2">
-                <button className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream transition-all text-slate w-full">
-                  <span className="text-xl">📝</span>
-                  <span className="text-sm font-medium">Edit Services</span>
+            <div className="bg-white rounded-xl shadow p-6">
+              <h3 className="font-bold text-gray-900 mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/services/create")}
+                  className="flex items-center space-x-3 w-full p-3 rounded-lg hover:bg-gray-50 transition"
+                >
+                  <span className="text-xl">➕</span>
+                  <span className="text-gray-700">Add New Service</span>
                 </button>
-                <button className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream transition-all text-slate w-full">
-                  <span className="text-xl">📍</span>
-                  <span className="text-sm font-medium">Update Location</span>
+                <button
+                  onClick={() => router.push("/services/manage")}
+                  className="flex items-center space-x-3 w-full p-3 rounded-lg hover:bg-gray-50 transition"
+                >
+                  <span className="text-xl">📋</span>
+                  <span className="text-gray-700">Manage Services</span>
                 </button>
-                <button className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream transition-all text-slate w-full">
-                  <span className="text-xl">🕐</span>
-                  <span className="text-sm font-medium">Set Schedule</span>
+                <button
+                  onClick={() => router.push("/schedule")}
+                  className="flex items-center space-x-3 w-full p-3 rounded-lg hover:bg-gray-50 transition"
+                >
+                  <span className="text-xl">📅</span>
+                  <span className="text-gray-700">Set Availability</span>
                 </button>
-                <button className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream transition-all text-slate w-full">
-                  <span className="text-xl">⚙️</span>
-                  <span className="text-sm font-medium">Settings</span>
-                </button>
-                <button className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream transition-all text-red-500 w-full">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-3 w-full p-3 rounded-lg hover:bg-red-50 transition text-red-600"
+                >
                   <span className="text-xl">🚪</span>
-                  <span className="text-sm font-medium">Sign Out</span>
+                  <span className="font-medium">Sign Out</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

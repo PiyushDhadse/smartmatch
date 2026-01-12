@@ -27,10 +27,37 @@ class UserController {
         userData.services = services;
       }
 
-      const { data: user, error } = await supabase
+      const { data: user, error: supabaseError } = await supabase
         .from("users")
         .insert([userData])
         .select();
+
+      // Check for Supabase errors
+      if (supabaseError) {
+        console.error("Supabase error:", supabaseError);
+
+        // Handle duplicate email error
+        if (
+          supabaseError.code === "23505" ||
+          supabaseError.message?.includes("duplicate") ||
+          supabaseError.message?.includes("unique")
+        ) {
+          return ApiResponse.error(res, "Email already registered", 400, {
+            email: "This email is already registered",
+          });
+        }
+
+        return ApiResponse.error(
+          res,
+          supabaseError.message || "Registration failed",
+          400
+        );
+      }
+
+      // Check if user was created
+      if (!user || user.length === 0) {
+        return ApiResponse.error(res, "Failed to create user", 500);
+      }
 
       // Add success response
       return ApiResponse.success(
@@ -47,7 +74,11 @@ class UserController {
       );
     } catch (error) {
       console.error("Register error:", error);
-      return ApiResponse.error(res, "Registration failed");
+      return ApiResponse.error(
+        res,
+        error.message || "Registration failed",
+        500
+      );
     }
   };
 
@@ -97,31 +128,33 @@ class UserController {
   }
 
   // Get current user profile
+  // CORRECT getProfile function
   static async getProfile(req, res) {
     try {
+      // req.userId should be set by your auth middleware
+      if (!req.userId) {
+        return ApiResponse.unauthorized(res, "User not authenticated");
+      }
+
+      // Query the user
       const { data: user, error } = await supabase
         .from("users")
-        .select(
-          "id, name, email, phone, user_type, role, created_at, updated_at"
-        )
-        .eq("id", req.userId)
+        .select("*")
+        .eq("id", req.userId) // Use req.userId from middleware
         .single();
 
       if (error || !user) {
         return ApiResponse.notFound(res, "User not found");
       }
 
-      // If provider, get services
-      if (user.user_type === "provider") {
-        const { data: services } = await supabase
-          .from("provider_services")
-          .select("service_name")
-          .eq("user_id", user.id);
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
 
-        user.services = services?.map((s) => s.service_name) || [];
-      }
-
-      return ApiResponse.success(res, user, "Profile retrieved successfully");
+      return ApiResponse.success(
+        res,
+        userWithoutPassword,
+        "Profile retrieved successfully"
+      );
     } catch (error) {
       console.error("Get profile error:", error);
       return ApiResponse.error(res, "Failed to get profile");

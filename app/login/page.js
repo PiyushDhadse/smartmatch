@@ -46,20 +46,17 @@ export default function LoginPage() {
       // Check both possible field names: userType and role
       const userData = result.data?.user || result.data;
       const userType = userData.userType || userData.role || userData.user_type;
-      
+
       console.log("DEBUG - User data:", userData);
       console.log("DEBUG - User type:", userType);
-      
-      let dashboardPath = '/dashboard';
-      if (userType === 'serviceProvider' || userType === 'provider') {
-        dashboardPath = '/dashboard/provider';
-      } else if (userType === 'customer') {
-        dashboardPath = '/dashboard';
+
+      // Redirect based on user type
+      // In your login page handleEmailLogin function:
+      if (userType === "serviceProvider" || userType === "provider") {
+        router.push("/dashboard/provider"); // Go directly to provider dashboard
+      } else {
+        router.push("/dashboard/customer"); // Go directly to customer dashboard
       }
-      
-      console.log("DEBUG - Redirecting to:", dashboardPath);
-      router.push(dashboardPath);
-      
     } catch (error) {
       console.error("DEBUG - Login catch error:", error);
       setError(error.message || "Invalid email or password");

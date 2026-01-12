@@ -26,7 +26,7 @@ const RegisterPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState("");
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -120,22 +120,38 @@ const RegisterPage = () => {
       console.log("DEBUG - Registration result:", result);
 
       if (!result.success) {
-        // Show validation errors if available
+        // Show validation errors if available without throwing (avoid terminal stack traces)
         if (result.errors) {
           const firstError = Object.values(result.errors)[0];
-          throw new Error(firstError || result.error || "Registration failed");
+          setError(firstError || result.error || "Registration failed");
+          return;
         }
-        throw new Error(result.error || "Registration failed");
+        setError(result.error || "Registration failed");
+        return;
       }
 
       // Success!
       console.log("✅ Registration successful:", result);
+      console.log("Registration returned token?", !!result.data?.token);
+
+      // If no token returned, you might need to login after registration
+      if (!result.data?.token) {
+        // Auto-login after successful registration
+        const loginResult = await login({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+
+        if (loginResult.success) {
+          console.log("Auto-login successful after registration");
+        }
+      }
 
       setTimeout(() => {
         router.push(
           formData.userType === "serviceProvider"
             ? "/dashboard/provider"
-            : "/dashboard"
+            : "/dashboard/customer" // ← FIXED: Go to customer dashboard
         );
       }, 1500);
     } catch (err) {

@@ -1,34 +1,34 @@
 // middlewares/auth.middleware.js
-const AuthUtils = require('../utils/auth');
-const supabase = require('../config/supabase');
-const ApiResponse = require('../utils/response');
+const AuthUtils = require("../utils/auth");
+const supabase = require("../config/supabase");
+const ApiResponse = require("../utils/response");
 
 class AuthMiddleware {
-  // Verify JWT token and set user in request
+  // In auth.middleware.js, update the verifyToken function:
   static async verifyToken(req, res, next) {
     try {
       const authHeader = req.headers.authorization;
-      
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return ApiResponse.unauthorized(res, 'No token provided');
+
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return ApiResponse.unauthorized(res, "No token provided");
       }
 
-      const token = authHeader.split(' ')[1];
+      const token = authHeader.split(" ")[1];
       const decoded = AuthUtils.verifyToken(token);
 
       if (!decoded) {
-        return ApiResponse.unauthorized(res, 'Invalid or expired token');
+        return ApiResponse.unauthorized(res, "Invalid or expired token");
       }
 
-      // Verify user exists in database
+      // Verify user exists in database - SELECT ALL COLUMNS (*)
       const { data: user, error } = await supabase
-        .from('users')
-        .select('id, email, name, role, avatar_url')
-        .eq('id', decoded.id)
+        .from("users")
+        .select("*") // ← CHANGE THIS from specific columns to *
+        .eq("id", decoded.id)
         .single();
 
       if (error || !user) {
-        return ApiResponse.unauthorized(res, 'User not found');
+        return ApiResponse.unauthorized(res, "User not found");
       }
 
       // Set user session in Supabase for RLS
@@ -36,11 +36,11 @@ class AuthMiddleware {
 
       // Attach user to request
       req.user = user;
-      req.userId = user.id;
+      req.userId = user.id; // Make sure this is set
       next();
     } catch (error) {
-      console.error('Auth middleware error:', error);
-      return ApiResponse.error(res, 'Authentication failed');
+      console.error("Auth middleware error:", error);
+      return ApiResponse.error(res, "Authentication failed");
     }
   }
 
@@ -48,11 +48,11 @@ class AuthMiddleware {
   static authorize(...roles) {
     return (req, res, next) => {
       if (!req.user) {
-        return ApiResponse.unauthorized(res, 'Authentication required');
+        return ApiResponse.unauthorized(res, "Authentication required");
       }
 
       if (!roles.includes(req.user.role)) {
-        return ApiResponse.forbidden(res, 'Insufficient permissions');
+        return ApiResponse.forbidden(res, "Insufficient permissions");
       }
 
       next();
@@ -63,16 +63,16 @@ class AuthMiddleware {
   static async optionalAuth(req, res, next) {
     try {
       const authHeader = req.headers.authorization;
-      
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
+
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
         const decoded = AuthUtils.verifyToken(token);
 
         if (decoded) {
           const { data: user } = await supabase
-            .from('users')
-            .select('id, email, name, role, avatar_url')
-            .eq('id', decoded.id)
+            .from("users")
+            .select("id, email, name, role, avatar_url")
+            .eq("id", decoded.id)
             .single();
 
           if (user) {

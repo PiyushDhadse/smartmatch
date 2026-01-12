@@ -1,8 +1,8 @@
 // frontend/contexts/AuthContext.js
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '@/app/lib/api';
+import { createContext, useContext, useState, useEffect } from "react";
+import { api } from "@/app/lib/api";
 
 const AuthContext = createContext({});
 
@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
 
   const checkAuth = async () => {
     const token = api.getToken();
-    
+
     if (!token) {
       setLoading(false);
       return;
@@ -24,53 +24,52 @@ export function AuthProvider({ children }) {
 
     try {
       const response = await api.getProfile();
-      setUser(response.data);
+
+      // Your backend returns: { success, message, data: { ...user } }
+      if (response.success && response.data) {
+        setUser(response.data); // Set the user from response.data
+      } else {
+        throw new Error(response.message || "Authentication failed");
+      }
     } catch (error) {
-      console.error('Auth check failed:', error);
-      api.removeToken();
+      console.error("Auth check failed:", error);
+      // If token is invalid (401), clear it
+      if (error.response?.status === 401) {
+        api.removeToken();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   // In your AuthContext.js
-const login = async (credentials) => {
+  // In AuthContext.js, update the login function:
+  const login = async (credentials) => {
   try {
-    console.log("DEBUG - AuthContext login called with:", credentials);
     const response = await api.login(credentials);
     
-    console.log("DEBUG - Login API response:", response);
-    
-    // Handle different response formats
-    if (response.token) {
-      api.setToken(response.token);
-      setUser(response.user || response.data);
-      return { 
-        success: true, 
-        message: response.message,
-        data: response 
-      };
-    } else if (response.data?.token) {
+    // Your backend returns: { success, message, data: { user, token } }
+    if (response.success && response.data?.token) {
       api.setToken(response.data.token);
-      setUser(response.data.user || response.data);
+      setUser(response.data.user);  // Set user from response.data.user
       return { 
         success: true, 
         message: response.message,
         data: response.data 
       };
     } else {
-      throw new Error("Invalid login response format");
+      throw new Error(response.message || "Login failed");
     }
     
   } catch (error) {
     console.error("AuthContext login error:", error);
     
-    // Extract error details from the response
     let errorMessage = 'Login failed';
     
     if (error.response?.data?.message) {
       errorMessage = error.response.data.message;
-    } else if (error.message && error.message !== "HTTP error! status: 401") {
+    } else if (error.message) {
       errorMessage = error.message;
     }
     
@@ -82,26 +81,29 @@ const login = async (credentials) => {
   }
 };
 
- const register = async (userData) => {
+  const register = async (userData) => {
   try {
     const response = await api.register(userData);
     
-    // If we get here, registration was successful
-    if (response.token) {
-      api.setToken(response.token);
+    // Your backend returns: { success, message, data: { user } }
+    if (response.success && response.data?.user) {
+      // Note: Registration might not return a token
+      if (response.data.token) {
+        api.setToken(response.data.token);
+      }
+      setUser(response.data.user);
+      return { 
+        success: true, 
+        message: response.message,
+        data: response.data 
+      };
+    } else {
+      throw new Error(response.message || "Registration failed");
     }
-    
-    setUser(response.user || response.data);
-    return { 
-      success: true, 
-      message: response.message,
-      data: response 
-    };
     
   } catch (error) {
     console.error('Registration error:', error);
     
-    // Extract error details from the response
     let errorMessage = 'Registration failed';
     let validationErrors = null;
     
@@ -123,7 +125,7 @@ const login = async (credentials) => {
     try {
       await api.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       api.removeToken();
       setUser(null);
@@ -150,11 +152,7 @@ const login = async (credentials) => {
     isAuthenticated: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
