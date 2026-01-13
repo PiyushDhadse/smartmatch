@@ -278,7 +278,7 @@ export default function ServicesPage() {
                 <label className="sr-only" htmlFor="search">
                   Search services
                 </label>
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-white px-4 py-3 focus-within:ring-2 focus-within:ring-emerald-500">
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-white-50 px-4 py-3 focus-within:ring-2 focus-within:ring-emerald-500">
                   <span aria-hidden className="text-slate-400">
                     🔎
                   </span>
