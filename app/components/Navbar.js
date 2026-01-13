@@ -28,9 +28,9 @@ export default function Navbar() {
   }, [pathname]);
 
   const btnPrimary =
-    "inline-flex items-center justify-center rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 transition px-5 py-2.5";
+    "inline-flex items-center justify-center rounded-xl bg-forest text-white font-semibold hover:bg-emerald-700 transition px-5 py-2.5";
   const btnSecondary =
-    "inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white text-slate-800 font-semibold hover:bg-emerald-50 transition px-5 py-2.5";
+    "inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white text-slate-700 font-semibold hover:bg-emerald-50 transition px-5 py-2.5";
 
   // Determine which auth system to use
   const isLoggedIn = isAuthenticated;

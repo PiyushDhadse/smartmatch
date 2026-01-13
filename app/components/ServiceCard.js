@@ -75,7 +75,7 @@ const ServiceCard = ({ service }) => {
               addToCart(cartService);
               router.push('/booking/checkout');
             }}
-            className="flex-1 bg-emerald-700 hover:bg-emerald-900 text-white py-2 rounded-xl font-medium transition"
+            className="flex-1 bg-forest hover:bg-emerald-900 text-white py-2 rounded-xl font-medium transition"
           >
             Buy Now
           </button>
