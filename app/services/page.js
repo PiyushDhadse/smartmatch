@@ -298,7 +298,7 @@ export default function ServicesPage() {
                       key={tag}
                       type="button"
                       onClick={() => setSearchTerm(tag)}
-                      className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-900 hover:bg-emerald-100 transition"
+                      className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-900 hover:bg-emerald-700 transition"
                     >
                       {tag}
                     </button>
@@ -352,7 +352,6 @@ export default function ServicesPage() {
                     />
                   </svg>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">Quick links to dedicated pages (you can add more later).</p>
               </div>
 
               {/* Helper / CTA */}

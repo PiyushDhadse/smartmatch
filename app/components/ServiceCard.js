@@ -14,10 +14,18 @@ const ServiceCard = ({ service }) => {
     price: service.price,
     route: `/booking/${service.id}`,
   };
-
+const imageSrc = service.image || '/images/service-placeholder.jpg';
   return (
     <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition duration-300 border p-5 flex flex-col justify-between">
-      
+      {/* Service Image */}
+      <div className="w-full h-40 mb-4 rounded-xl overflow-hidden bg-emerald-50 flex items-center justify-center">
+        <img
+          src={imageSrc}
+          alt={service.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+
       {/* Service Info */}
       <div>
         <h2 className="text-lg font-semibold text-gray-800">
