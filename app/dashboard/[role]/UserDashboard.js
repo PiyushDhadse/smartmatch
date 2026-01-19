@@ -10,6 +10,7 @@ import Link from "next/link";
 export default function UserDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // ← ADD THIS LINE
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("upcoming");
 
@@ -23,14 +24,47 @@ export default function UserDashboard() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      const profileRes = await api.getProfile();
-      setUser(profileRes);
+      // 1. Load profile
+      try {
+        const profileRes = await api.getProfile();
+        console.log("Profile response:", profileRes);
 
-      const bookingsRes = await api.getUserBookings();
-      setBookings(bookingsRes || []);
+        if (profileRes.success && profileRes.data) {
+          setUser(profileRes.data);
+        } else {
+          console.warn("Profile response format unexpected:", profileRes);
+          setUser(profileRes); // Try raw response
+        }
+      } catch (profileError) {
+        console.error("Profile error:", profileError);
+        if (profileError.response?.status === 401) {
+          setError("Session expired. Please login again.");
+          return;
+        }
+      }
+
+      // 2. Load bookings (SIMPLIFIED)
+      try {
+        const bookingsRes = await api.getUserBookings();
+        console.log("Bookings response:", bookingsRes);
+
+        if (bookingsRes.success) {
+          setBookings(bookingsRes.data || []);
+        } else if (Array.isArray(bookingsRes)) {
+          // If API returns array directly
+          setBookings(bookingsRes);
+        } else {
+          setBookings([]);
+        }
+      } catch (bookingsError) {
+        console.error("Bookings error:", bookingsError);
+        setBookings([]); // Set empty array to prevent crashes
+      }
     } catch (error) {
-      console.error("Failed to load dashboard data:", error);
+      console.error("Dashboard load error:", error);
+      setError(error.message || "Failed to load dashboard");
     } finally {
       setLoading(false);
     }
@@ -165,7 +199,7 @@ export default function UserDashboard() {
                               <span className="text-sm text-gray-500">
                                 📅{" "}
                                 {new Date(
-                                  booking.preferred_date
+                                  booking.preferred_date,
                                 ).toLocaleDateString()}
                               </span>
                               <span className="text-sm text-gray-500">

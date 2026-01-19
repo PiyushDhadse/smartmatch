@@ -65,7 +65,7 @@ const RegisterPage = () => {
 
     if (!passwordRegex.test(formData.password)) {
       setError(
-        "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+        "Password must be at least 8 characters with uppercase, lowercase, number, and special character",
       );
       return false;
     }
@@ -89,6 +89,19 @@ const RegisterPage = () => {
   };
 
   const handleSubmit = async (e) => {
+    // In your register page's handleSubmit function:
+    console.log("DEBUG - Registration result:", result);
+
+    // Check if token exists
+    if (result.success && result.data?.token) {
+      console.log(
+        "✅ Token received:",
+        result.data.token.substring(0, 20) + "...",
+      );
+      api.setToken(result.data.token);
+    } else {
+      console.log("❌ No token in response");
+    }
     e.preventDefault();
 
     if (!validateForm()) return;
@@ -151,7 +164,7 @@ const RegisterPage = () => {
         router.push(
           formData.userType === "serviceProvider"
             ? "/dashboard/provider"
-            : "/dashboard/customer" // ← FIXED: Go to customer dashboard
+            : "/dashboard/customer", // ← FIXED: Go to customer dashboard
         );
       }, 1500);
     } catch (err) {
@@ -301,10 +314,10 @@ const RegisterPage = () => {
                         passwordStrength === "strong"
                           ? "text-green-600"
                           : passwordStrength === "medium"
-                          ? "text-yellow-600"
-                          : passwordStrength === "weak"
-                          ? "text-red-600"
-                          : "text-gray-600"
+                            ? "text-yellow-600"
+                            : passwordStrength === "weak"
+                              ? "text-red-600"
+                              : "text-gray-600"
                       }`}
                     >
                       {getPasswordStrengthText()}
@@ -318,10 +331,10 @@ const RegisterPage = () => {
                           passwordStrength === "weak"
                             ? "33%"
                             : passwordStrength === "medium"
-                            ? "66%"
-                            : passwordStrength === "strong"
-                            ? "100%"
-                            : "0%",
+                              ? "66%"
+                              : passwordStrength === "strong"
+                                ? "100%"
+                                : "0%",
                       }}
                     />
                   </div>

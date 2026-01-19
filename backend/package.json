@@ -25,6 +25,7 @@
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "react-hook-form": "^7.71.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
