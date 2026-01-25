@@ -1,21 +1,52 @@
-// app/api/auth/profile/route.js - MINIMAL WORKING VERSION
+// app/api/auth/profile/route.js
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
   try {
-    console.log("Profile API called");
+    // Get token from Authorization header
+    const authHeader = request.headers.get("authorization");
 
-    // For now, just return a test response
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No token provided",
+          message: "Authentication required",
+        },
+        { status: 401 },
+      );
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    // Call the backend API to get profile
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    const response = await fetch(`${backendUrl}/auth/profile`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: data.error || data.message || "Failed to fetch profile",
+          message: data.message,
+        },
+        { status: response.status },
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Profile API is working",
-      data: {
-        id: "test-id",
-        email: "test@example.com",
-        name: "Test User",
-        user_type: "customer",
-        created_at: new Date().toISOString(),
-      },
+      message: "Profile retrieved successfully",
+      data: data.data || data,
     });
   } catch (error) {
     console.error("Error in profile API:", error);
@@ -23,35 +54,6 @@ export async function GET(request) {
       {
         success: false,
         error: "Failed to fetch profile",
-        message: error.message,
-      },
-      { status: 500 },
-    );
-  }
-}
-
-export async function POST(request) {
-  try {
-    const body = await request.json();
-    console.log("Creating profile with data:", body);
-
-    return NextResponse.json({
-      success: true,
-      message: "Profile created",
-      data: {
-        id: "new-test-id",
-        email: body.email || "test@example.com",
-        name: body.name || "Test User",
-        user_type: body.user_type || "customer",
-        created_at: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    console.error("Error creating profile:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to create profile",
         message: error.message,
       },
       { status: 500 },

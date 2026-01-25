@@ -21,11 +21,19 @@ export default function ProviderDashboard() {
   });
 
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user: authUser, loading: authLoading, logout } = useAuth();
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    // Check if user is authenticated
+    if (!authLoading && !authUser) {
+      router.push("/login");
+      return;
+    }
+
+    if (authUser) {
+      loadDashboardData();
+    }
+  }, [authUser, authLoading, router]);
 
   const loadDashboardData = async () => {
     try {
@@ -45,11 +53,11 @@ export default function ProviderDashboard() {
 
       // Calculate stats
       const completedBookings = (bookingsRes || []).filter(
-        (b) => b.status === "completed"
+        (b) => b.status === "completed",
       );
       const earnings = completedBookings.reduce(
         (sum, b) => sum + (b.quote_amount || 0),
-        0
+        0,
       );
 
       setStats({
@@ -105,7 +113,7 @@ export default function ProviderDashboard() {
     emergency: "bg-red-100 text-red-800",
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -217,7 +225,7 @@ export default function ProviderDashboard() {
                       key: "active",
                       label: "Active Jobs",
                       count: bookings.filter((b) =>
-                        ["accepted", "in_progress"].includes(b.status)
+                        ["accepted", "in_progress"].includes(b.status),
                       ).length,
                     },
                     {
@@ -274,7 +282,7 @@ export default function ProviderDashboard() {
                               <span className="text-sm text-gray-500">
                                 📅{" "}
                                 {new Date(
-                                  booking.preferred_date
+                                  booking.preferred_date,
                                 ).toLocaleDateString()}
                               </span>
                               <span className="text-sm text-gray-500">
@@ -324,7 +332,7 @@ export default function ProviderDashboard() {
                                   onClick={() =>
                                     handleUpdateBookingStatus(
                                       booking.id,
-                                      "accepted"
+                                      "accepted",
                                     )
                                   }
                                   className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700"
@@ -335,7 +343,7 @@ export default function ProviderDashboard() {
                                   onClick={() =>
                                     handleUpdateBookingStatus(
                                       booking.id,
-                                      "cancelled"
+                                      "cancelled",
                                     )
                                   }
                                   className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300"
@@ -349,7 +357,7 @@ export default function ProviderDashboard() {
                                 onClick={() =>
                                   handleUpdateBookingStatus(
                                     booking.id,
-                                    "in_progress"
+                                    "in_progress",
                                   )
                                 }
                                 className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
@@ -362,7 +370,7 @@ export default function ProviderDashboard() {
                                 onClick={() =>
                                   handleUpdateBookingStatus(
                                     booking.id,
-                                    "completed"
+                                    "completed",
                                   )
                                 }
                                 className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"

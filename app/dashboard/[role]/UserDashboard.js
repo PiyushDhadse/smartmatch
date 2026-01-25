@@ -10,16 +10,24 @@ import Link from "next/link";
 export default function UserDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // ← ADD THIS LINE
+  const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("upcoming");
 
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user: authUser, loading: authLoading, logout } = useAuth();
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    // Check if user is authenticated
+    if (!authLoading && !authUser) {
+      router.push("/login");
+      return;
+    }
+
+    if (authUser) {
+      loadDashboardData();
+    }
+  }, [authUser, authLoading, router]);
 
   const loadDashboardData = async () => {
     try {
@@ -91,12 +99,28 @@ export default function UserDashboard() {
     cancelled: "bg-red-100 text-red-800",
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition"
+          >
+            Go to Login
+          </button>
         </div>
       </div>
     );

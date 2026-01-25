@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api } from "@/app/lib/api";
 
 export default function ProtectedRoute({ children }) {
   const router = useRouter();

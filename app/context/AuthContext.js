@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   // Check authentication status
   const checkAuth = async () => {
     const token = api.getToken();
-    
+
     if (!token) {
       setLoading(false);
       return;
@@ -21,15 +21,18 @@ export function AuthProvider({ children }) {
 
     try {
       const response = await api.getProfile();
-      
+
       // Simple check - if response has user data
       if (response && (response.data || response.id)) {
         setUser(response.data || response);
         setAuthError(null);
-        
+
         // Store in localStorage
         if (typeof window !== "undefined") {
-          localStorage.setItem("user", JSON.stringify(response.data || response));
+          localStorage.setItem(
+            "user",
+            JSON.stringify(response.data || response),
+          );
         }
       } else {
         // If no valid user data, clear token
@@ -48,7 +51,7 @@ export function AuthProvider({ children }) {
   // Check auth on mount
   useEffect(() => {
     checkAuth();
-    
+
     // Also check if user is stored in localStorage
     if (typeof window !== "undefined") {
       const storedUser = localStorage.getItem("user");
@@ -60,70 +63,66 @@ export function AuthProvider({ children }) {
         }
       }
     }
-  }, []);
+  }, [user]);
 
   // Login function - SIMPLIFIED
   const login = async (credentials) => {
     try {
       setAuthError(null);
       setLoading(true);
-      
+
       const response = await api.login(credentials);
-      
+
       // Handle different response formats
       if (response.success && response.data) {
         // Save token if exists
         if (response.data.token) {
           api.setToken(response.data.token);
         }
-        
+
         // Set user
         const userData = response.data.user || response.data;
         setUser(userData);
-        
+
         // Store in localStorage
         if (typeof window !== "undefined") {
           localStorage.setItem("user", JSON.stringify(userData));
         }
-        
-        return { 
-          success: true, 
+
+        return {
+          success: true,
           message: response.message || "Login successful",
-          data: response.data 
+          data: response.data,
         };
-      } 
-      
+      }
+
       // If response is the user object directly
       else if (response.id || response.email) {
         setUser(response);
-        
+
         if (typeof window !== "undefined") {
           localStorage.setItem("user", JSON.stringify(response));
         }
-        
-        return { 
-          success: true, 
+
+        return {
+          success: true,
           message: "Login successful",
-          data: { user: response } 
+          data: { user: response },
         };
-      }
-      
-      else {
+      } else {
         throw new Error(response.message || "Login failed");
       }
-      
     } catch (error) {
       console.error("Login error:", error);
-      
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Login failed";
-      
+
+      const errorMessage =
+        error.response?.data?.message || error.message || "Login failed";
+
       setAuthError(errorMessage);
-      
-      return { 
-        success: false, 
-        error: errorMessage 
+
+      return {
+        success: false,
+        error: errorMessage,
       };
     } finally {
       setLoading(false);
@@ -135,46 +134,44 @@ export function AuthProvider({ children }) {
     try {
       setAuthError(null);
       setLoading(true);
-      
+
       const response = await api.register(userData);
-      
+
       if (response.success) {
         // If token provided, save it
         if (response.data?.token) {
           api.setToken(response.data.token);
         }
-        
+
         // Set user
         const userData = response.data?.user || response.data;
         if (userData) {
           setUser(userData);
-          
+
           if (typeof window !== "undefined") {
             localStorage.setItem("user", JSON.stringify(userData));
           }
         }
-        
-        return { 
-          success: true, 
+
+        return {
+          success: true,
           message: response.message || "Registration successful",
-          data: response.data 
+          data: response.data,
         };
       } else {
         throw new Error(response.message || "Registration failed");
       }
-      
     } catch (error) {
       console.error("Registration error:", error);
-      
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Registration failed";
-      
+
+      const errorMessage =
+        error.response?.data?.message || error.message || "Registration failed";
+
       setAuthError(errorMessage);
-      
-      return { 
-        success: false, 
-        error: errorMessage 
+
+      return {
+        success: false,
+        error: errorMessage,
       };
     } finally {
       setLoading(false);
@@ -191,7 +188,7 @@ export function AuthProvider({ children }) {
       api.removeToken();
       setUser(null);
       setAuthError(null);
-      
+
       if (typeof window !== "undefined") {
         localStorage.removeItem("user");
       }
@@ -202,22 +199,22 @@ export function AuthProvider({ children }) {
   const updateProfile = async (data) => {
     try {
       const response = await api.updateProfile(data);
-      
+
       if (response.success && response.data) {
         setUser(response.data);
-        
+
         if (typeof window !== "undefined") {
           localStorage.setItem("user", JSON.stringify(response.data));
         }
-        
+
         return { success: true, data: response.data };
       } else {
         throw new Error(response.message || "Update failed");
       }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.message || "Update failed" 
+      return {
+        success: false,
+        error: error.message || "Update failed",
       };
     }
   };

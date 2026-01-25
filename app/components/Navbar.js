@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ShoppingCart } from 'lucide-react';
-import { useCart } from '@/app/context/CartContext';
-import CartDrawer from './CartDrawer';
+import { ShoppingCart } from "lucide-react";
+import { useCart } from "@/app/context/CartContext";
+import CartDrawer from "./CartDrawer";
 import { useAuth } from "@/app/context/AuthContext"; // Import custom auth hook
 
 export default function Navbar() {
@@ -24,7 +25,8 @@ export default function Navbar() {
 
   // Close menus on route change
   useEffect(() => {
-    setIsMenuOpen(false);
+    const closeMobileMenu = () => setIsMenuOpen(false);
+    closeMobileMenu();
   }, [pathname]);
 
   const btnPrimary =
@@ -47,9 +49,13 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-3xl">
-            <img className="h-20" src="./favicon.ico" alt="" />
-          </span>
+          <Image
+            src="/favicon.ico"
+            alt="SmartMatch Logo"
+            width={40}
+            height={40}
+            className="h-10 w-10"
+          />
           <span className="text-xl font-bold text-slate-900">SmartMatch</span>
         </Link>
 
@@ -111,11 +117,15 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link 
-                href={currentUser?.role === 'provider' ? '/dashboard/provider' : '/dashboard/user'} 
+              <Link
+                href={
+                  currentUser?.role === "provider"
+                    ? "/dashboard/provider"
+                    : "/dashboard/user"
+                }
                 className={`${btnPrimary} text-sm`}
               >
-                {currentUser?.name || 'Dashboard'}
+                {currentUser?.name || "Dashboard"}
               </Link>
               <button
                 type="button"
@@ -195,11 +205,15 @@ export default function Navbar() {
             ) : (
               <>
                 <Link
-                  href={currentUser?.role === 'provider' ? '/dashboard/provider' : '/dashboard/user'}
+                  href={
+                    currentUser?.role === "provider"
+                      ? "/dashboard/provider"
+                      : "/dashboard/user"
+                  }
                   className={`${btnPrimary} w-full text-center`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {currentUser?.name || 'Dashboard'}
+                  {currentUser?.name || "Dashboard"}
                 </Link>
                 <button
                   type="button"

@@ -89,19 +89,6 @@ const RegisterPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    // In your register page's handleSubmit function:
-    console.log("DEBUG - Registration result:", result);
-
-    // Check if token exists
-    if (result.success && result.data?.token) {
-      console.log(
-        "✅ Token received:",
-        result.data.token.substring(0, 20) + "...",
-      );
-      api.setToken(result.data.token);
-    } else {
-      console.log("❌ No token in response");
-    }
     e.preventDefault();
 
     if (!validateForm()) return;

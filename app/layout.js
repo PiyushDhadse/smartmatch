@@ -1,5 +1,6 @@
 // app/layout.js - UPDATED VERSION
 import "./globals.css";
+import Script from "next/script";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { CartProvider } from "./context/CartContext";
@@ -21,7 +22,7 @@ export default function RootLayout({ children }) {
             <AuthInitializer />
             <Navbar />
             <main className="flex-1">{children}</main>
-            <script src="https://www.noupe.com/embed/019b3379d0fb717cb2ab08c3dc55a4315c07.js"></script>
+            <Script src="https://www.noupe.com/embed/019b3379d0fb717cb2ab08c3dc55a4315c07.js" />
             <Footer />
           </CartProvider>
         </AuthProvider>
