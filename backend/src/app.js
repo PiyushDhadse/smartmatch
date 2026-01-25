@@ -9,6 +9,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth.routes');
 const servicesRoutes = require('./routes/services.routes');
 const bookingsRoutes = require('./routes/bookings.routes');
+const reviewsRoutes = require('./routes/reviews.routes');
 
 const app = express();
 
@@ -54,5 +55,5 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
-
+app.use('/api/reviews', reviewsRoutes);
 module.exports = app;
