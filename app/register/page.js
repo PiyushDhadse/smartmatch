@@ -22,11 +22,12 @@ const RegisterPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState("");
   const router = useRouter();
-  const { register, login } = useAuth();
+  const { signUp } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -96,64 +97,49 @@ const RegisterPage = () => {
     try {
       setLoading(true);
       setError("");
+      setSuccess("");
 
-      const userData = {
-        name: formData.name.trim(),
+      const result = await signUp({
         email: formData.email.trim(),
         password: formData.password,
-        confirmPassword: formData.confirmPassword,
+        name: formData.name.trim(),
         userType: formData.userType,
-        services:
-          formData.userType === "serviceProvider"
-            ? formData.services
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
-            : [],
-        agreeToTerms: formData.agreeToTerms,
-      };
-
-      console.log("DEBUG - Registration data being sent:", userData);
-
-      const result = await register(userData);
-
-      console.log("DEBUG - Registration result:", result);
+        services: formData.services,
+      });
 
       if (!result.success) {
-        // Show validation errors if available without throwing (avoid terminal stack traces)
-        if (result.errors) {
-          const firstError = Object.values(result.errors)[0];
-          setError(firstError || result.error || "Registration failed");
-          return;
-        }
         setError(result.error || "Registration failed");
         return;
       }
 
       // Success!
-      console.log("✅ Registration successful:", result);
-      console.log("Registration returned token?", !!result.data?.token);
+      setSuccess(
+        result.message ||
+          "Registration successful! Please check your email to verify your account.",
+      );
 
-      // If no token returned, you might need to login after registration
-      if (!result.data?.token) {
-        // Auto-login after successful registration
-        const loginResult = await login({
-          email: formData.email.trim(),
-          password: formData.password,
-        });
+      // Clear form
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        userType: "customer",
+        services: "",
+        agreeToTerms: false,
+      });
 
-        if (loginResult.success) {
-          console.log("Auto-login successful after registration");
-        }
+      // If email confirmation is disabled, redirect to dashboard
+      if (result.data?.session) {
+        setTimeout(() => {
+          router.push(
+            formData.userType === "serviceProvider" ||
+              formData.userType === "provider"
+              ? "/dashboard/provider"
+              : "/dashboard/customer",
+          );
+        }, 2000);
       }
-
-      setTimeout(() => {
-        router.push(
-          formData.userType === "serviceProvider"
-            ? "/dashboard/provider"
-            : "/dashboard/customer", // ← FIXED: Go to customer dashboard
-        );
-      }, 1500);
     } catch (err) {
       console.error("Registration error:", err);
       setError(err.message || "Registration failed. Please try again.");
@@ -162,7 +148,6 @@ const RegisterPage = () => {
     }
   };
 
-  // ... rest of the component remains the same ...
   const getPasswordStrengthColor = () => {
     switch (passwordStrength) {
       case "weak":
@@ -202,6 +187,22 @@ const RegisterPage = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                <p className="text-green-700 text-sm">{success}</p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
           <div className="flex justify-center space-x-6 mb-8">
             <button
               type="button"
@@ -228,13 +229,6 @@ const RegisterPage = () => {
               🔧 I Provide Services
             </button>
           </div>
-
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>

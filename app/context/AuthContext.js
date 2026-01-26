@@ -1,237 +1,146 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
-import { api } from "@/app/lib/api";
+import { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "@/app/lib/supabase";
 
 const AuthContext = createContext({});
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState(null);
 
-  // Check authentication status
-  const checkAuth = async () => {
-    const token = api.getToken();
-
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await api.getProfile();
-
-      // Simple check - if response has user data
-      if (response && (response.data || response.id)) {
-        setUser(response.data || response);
-        setAuthError(null);
-
-        // Store in localStorage
-        if (typeof window !== "undefined") {
-          localStorage.setItem(
-            "user",
-            JSON.stringify(response.data || response),
-          );
-        }
-      } else {
-        // If no valid user data, clear token
-        api.removeToken();
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      api.removeToken();
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Check auth on mount
   useEffect(() => {
-    checkAuth();
-
-    // Also check if user is stored in localStorage
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser && !user) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          localStorage.removeItem("user");
+    // 1. Check active sessions and sets the user
+    const initializeAuth = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          await handleUserSession(session);
+        } else {
+          setLoading(false);
         }
+      } catch (error) {
+        console.error("Initialization error:", error);
+        setLoading(false);
       }
-    }
-  }, [user]);
+    };
 
-  // Login function - SIMPLIFIED
-  const login = async (credentials) => {
-    try {
-      setAuthError(null);
-      setLoading(true);
+    // 2. Helper to sync Auth User with Public Profile
+    const handleUserSession = async (session) => {
+      const { user: authUser } = session;
 
-      const response = await api.login(credentials);
+      try {
+        // Try to get profile from 'users' table
+        let { data: profile, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", authUser.id)
+          .maybeSingle();
 
-      // Handle different response formats
-      if (response.success && response.data) {
-        // Save token if exists
-        if (response.data.token) {
-          api.setToken(response.data.token);
+        if (!profile) {
+          console.log("Creating missing profile for:", authUser.email);
+          // If profile is missing, create it on the fly
+          // Use the role from metadata if it exists!
+          const { data: newProfile } = await supabase
+            .from("users")
+            .insert([
+              {
+                id: authUser.id,
+                email: authUser.email,
+                role: authUser.user_metadata?.role || "customer",
+                name: authUser.user_metadata?.full_name || "New User",
+              },
+            ])
+            .select()
+            .single();
+          profile = newProfile;
         }
 
-        // Set user
-        const userData = response.data.user || response.data;
-        setUser(userData);
-
-        // Store in localStorage
-        if (typeof window !== "undefined") {
-          localStorage.setItem("user", JSON.stringify(userData));
-        }
-
-        return {
-          success: true,
-          message: response.message || "Login successful",
-          data: response.data,
-        };
+        // SET USER WITH GUARANTEED ROLE
+        setUser({
+          ...authUser,
+          ...profile,
+          role: profile?.role || "customer",
+        });
+      } catch (err) {
+        console.error("Session sync error:", err);
+        // Fallback so the app doesn't crash/unauthorize
+        setUser({ ...authUser, role: "customer" });
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // If response is the user object directly
-      else if (response.id || response.email) {
-        setUser(response);
+    initializeAuth();
 
-        if (typeof window !== "undefined") {
-          localStorage.setItem("user", JSON.stringify(response));
-        }
-
-        return {
-          success: true,
-          message: "Login successful",
-          data: { user: response },
-        };
+    // 3. Listen for changes (Sign-in/out)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth Event:", event);
+      if (session) {
+        await handleUserSession(session);
       } else {
-        throw new Error(response.message || "Login failed");
+        setUser(null);
+        setLoading(false);
       }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+  const signIn = async ({ email, password }) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // The onAuthStateChange listener in your context
+      // will handle the profile fetching and redirection.
+      return { success: true, data };
     } catch (error) {
       console.error("Login error:", error);
-
-      const errorMessage =
-        error.response?.data?.message || error.message || "Login failed";
-
-      setAuthError(errorMessage);
-
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setLoading(false);
+      return { success: false, error: error.message };
     }
   };
 
-  // Register function - SIMPLIFIED
-  const register = async (userData) => {
+  // Make sure to include it in the Provider value:
+  // value={{ user, loading, signUp, signIn, signInWithGoogle, signOut }}
+  const signUp = async ({ email, password, name, userType, services }) => {
     try {
-      setAuthError(null);
-      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // We provide both common naming conventions to avoid trigger errors
+          data: {
+            name: name,
+            full_name: name,
+            role: userType === "serviceProvider" ? "provider" : "customer",
+            user_role: userType === "serviceProvider" ? "provider" : "customer",
+          },
+        },
+      });
 
-      const response = await api.register(userData);
-
-      if (response.success) {
-        // If token provided, save it
-        if (response.data?.token) {
-          api.setToken(response.data.token);
-        }
-
-        // Set user
-        const userData = response.data?.user || response.data;
-        if (userData) {
-          setUser(userData);
-
-          if (typeof window !== "undefined") {
-            localStorage.setItem("user", JSON.stringify(userData));
-          }
-        }
-
-        return {
-          success: true,
-          message: response.message || "Registration successful",
-          data: response.data,
-        };
-      } else {
-        throw new Error(response.message || "Registration failed");
-      }
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
-      console.error("Registration error:", error);
-
-      const errorMessage =
-        error.response?.data?.message || error.message || "Registration failed";
-
-      setAuthError(errorMessage);
-
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setLoading(false);
+      console.error("Sign up error:", error);
+      return { success: false, error: error.message };
     }
   };
 
-  // Logout function
-  const logout = async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      api.removeToken();
-      setUser(null);
-      setAuthError(null);
-
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("user");
-      }
-    }
-  };
-
-  // Update profile
-  const updateProfile = async (data) => {
-    try {
-      const response = await api.updateProfile(data);
-
-      if (response.success && response.data) {
-        setUser(response.data);
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem("user", JSON.stringify(response.data));
-        }
-
-        return { success: true, data: response.data };
-      } else {
-        throw new Error(response.message || "Update failed");
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message || "Update failed",
-      };
-    }
-  };
-
-  const value = {
-    user,
-    loading,
-    authError,
-    login,
-    register,
-    logout,
-    updateProfile,
-    checkAuth,
-    isAuthenticated: !!user,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider
+      value={{ user, loading, signUp, signOut: () => supabase.auth.signOut() }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
 export const useAuth = () => useContext(AuthContext);

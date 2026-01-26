@@ -5,7 +5,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
-import { AuthInitializer } from "./components/AuthInitializer";
+import { AuthInitializer } from "./components/auth/AuthInitializer";
 
 export const metadata = {
   title: "SmartMatch - Connect with Local Service Providers",
